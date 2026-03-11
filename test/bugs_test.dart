@@ -5,9 +5,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:fake_async/fake_async.dart';
-import 'package:phoenix_socket/src/channel.dart';
-import 'package:phoenix_socket/src/exceptions.dart';
-import 'package:phoenix_socket/src/socket.dart';
+import 'package:dark_phoenix_socket/src/channel.dart';
+import 'package:dark_phoenix_socket/src/exceptions.dart';
+import 'package:dark_phoenix_socket/src/socket.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:test/test.dart';
 

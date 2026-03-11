@@ -1,6 +1,6 @@
-# phoenix_socket
+# dark_phoenix_socket
 
-[![pub package](https://img.shields.io/pub/v/phoenix_socket.svg)](https://pub.dev/packages/phoenix_socket)
+[![pub package](https://img.shields.io/pub/v/dark_phoenix_socket.svg)](https://pub.dev/packages/dark_phoenix_socket)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![dart analyze](https://img.shields.io/badge/dart%20analyze-passing-brightgreen.svg)](https://dart.dev/tools/dart-analyze)
 
@@ -16,20 +16,20 @@ A lightweight [Phoenix Channel V2](https://hexdocs.pm/phoenix/channels.html) cli
 ## Installation
 
 ```sh
-dart pub add phoenix_socket
+dart pub add dark_phoenix_socket
 ```
 
 Or add manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  phoenix_socket: ^0.1.0
+  dark_phoenix_socket: ^0.1.0
 ```
 
 ## Quick start
 
 ```dart
-import 'package:phoenix_socket/phoenix_socket.dart';
+import 'package:dark_phoenix_socket/dark_phoenix_socket.dart';
 
 final socket = PhoenixSocket(
   'ws://localhost:4000/socket/websocket',

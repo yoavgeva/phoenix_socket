@@ -6,10 +6,10 @@
 
 import 'dart:convert';
 
-import 'package:phoenix_socket/src/channel.dart';
-import 'package:phoenix_socket/src/message.dart';
-import 'package:phoenix_socket/src/presence.dart';
-import 'package:phoenix_socket/src/socket.dart';
+import 'package:dark_phoenix_socket/src/channel.dart';
+import 'package:dark_phoenix_socket/src/message.dart';
+import 'package:dark_phoenix_socket/src/presence.dart';
+import 'package:dark_phoenix_socket/src/socket.dart';
 import 'package:test/test.dart';
 
 import 'fake_web_socket_channel.dart';
