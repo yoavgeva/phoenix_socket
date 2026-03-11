@@ -10,7 +10,7 @@
 //   #2306  Zombie presences after rolling deploy — appear then immediately leave
 //   #2034  No diff when last user leaves — design implication
 
-import 'package:dark_phoenix_socket/src/presence.dart';
+import 'package:dart_phoenix_socket/src/presence.dart';
 import 'package:test/test.dart';
 
 import 'presence_test.dart'

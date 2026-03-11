@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:dark_phoenix_socket/src/channel.dart';
-import 'package:dark_phoenix_socket/src/message.dart';
+import 'package:dart_phoenix_socket/src/channel.dart';
+import 'package:dart_phoenix_socket/src/message.dart';
 
 /// A single presence entry for one key (user/device).
 ///

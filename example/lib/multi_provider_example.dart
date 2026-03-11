@@ -13,7 +13,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:dark_phoenix_socket/dark_phoenix_socket.dart';
+import 'package:dart_phoenix_socket/dart_phoenix_socket.dart';
 
 import 'main.dart' show PhoenixSocketManager, ChangeNotifierProvider;
 

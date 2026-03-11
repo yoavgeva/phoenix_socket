@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:dark_phoenix_socket/src/exceptions.dart';
-import 'package:dark_phoenix_socket/src/message.dart';
-import 'package:dark_phoenix_socket/src/socket.dart';
+import 'package:dart_phoenix_socket/src/exceptions.dart';
+import 'package:dart_phoenix_socket/src/message.dart';
+import 'package:dart_phoenix_socket/src/socket.dart';
 
 /// The lifecycle state of a [PhoenixChannel].
 enum PhoenixChannelState {

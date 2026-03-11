@@ -6,7 +6,7 @@
 
 import 'dart:convert';
 
-import 'package:dark_phoenix_socket/src/presence.dart';
+import 'package:dart_phoenix_socket/src/presence.dart';
 import 'package:test/test.dart';
 
 import 'presence_test.dart'

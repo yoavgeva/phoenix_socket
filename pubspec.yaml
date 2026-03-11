@@ -1,9 +1,9 @@
-name: dark_phoenix_socket
+name: dart_phoenix_socket
 description: >-
   A lightweight Phoenix Channel V2 client for Dart and Flutter. Supports
   automatic reconnection, push buffering, heartbeat, and Phoenix Presence.
 version: 0.1.0
-repository: https://github.com/yoavgeva/dark_phoenix_socket
+repository: https://github.com/yoavgeva/dart_phoenix_socket
 
 environment:
   sdk: ^3.11.0

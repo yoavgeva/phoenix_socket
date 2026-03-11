@@ -1,4 +1,4 @@
-/// Flutter chat app example using dark_phoenix_socket.
+/// Flutter chat app example using dart_phoenix_socket.
 ///
 /// Shows the recommended patterns for a real Flutter app:
 ///   - PhoenixSocketManager as a ChangeNotifier in the Provider tree
@@ -11,7 +11,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:dark_phoenix_socket/dark_phoenix_socket.dart';
+import 'package:dart_phoenix_socket/dart_phoenix_socket.dart';
 
 // ---------------------------------------------------------------------------
 // main
@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'dark_phoenix_socket demo',
+      title: 'dart_phoenix_socket demo',
       home: const LoginScreen(),
     );
   }

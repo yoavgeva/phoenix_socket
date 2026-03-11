@@ -26,7 +26,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dark_phoenix_socket/dark_phoenix_socket.dart';
+import 'package:dart_phoenix_socket/dart_phoenix_socket.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:test/test.dart';
 

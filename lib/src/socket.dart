@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dark_phoenix_socket/src/channel.dart';
-import 'package:dark_phoenix_socket/src/message.dart';
+import 'package:dart_phoenix_socket/src/channel.dart';
+import 'package:dart_phoenix_socket/src/message.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// The connection state of a [PhoenixSocket].
