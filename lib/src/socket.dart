@@ -180,7 +180,7 @@ class PhoenixSocket {
 
       // Route to channel
       _channels[message.topic]?.receive(message);
-    } catch (_) {
+    } on Object {
       // Ignore malformed messages (TypeError, FormatException, etc.) —
       // do not disconnect.
     }
