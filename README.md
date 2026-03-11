@@ -1,6 +1,10 @@
 # phoenix_socket
 
-A lightweight [Phoenix Channel V2](https://hexdocs.pm/phoenix/channels.html) client for Dart.
+[![pub package](https://img.shields.io/pub/v/phoenix_socket.svg)](https://pub.dev/packages/phoenix_socket)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![dart analyze](https://img.shields.io/badge/dart%20analyze-passing-brightgreen.svg)](https://dart.dev/tools/dart-analyze)
+
+A lightweight [Phoenix Channel V2](https://hexdocs.pm/phoenix/channels.html) client for Dart and Flutter.
 
 - No rxdart dependency — pure Dart Streams
 - Works in Flutter and plain Dart (no Flutter SDK required)
@@ -10,6 +14,12 @@ A lightweight [Phoenix Channel V2](https://hexdocs.pm/phoenix/channels.html) cli
 - Stale message filtering — replies for old join cycles are dropped
 
 ## Installation
+
+```sh
+dart pub add phoenix_socket
+```
+
+Or add manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -249,16 +259,19 @@ completers are error-completed with `PhoenixException('Socket disconnected')`.
 You decide whether to retry after the channel rejoins:
 
 ```dart
-Future<void> sendWithRetry(PhoenixChannel channel, String event, Map payload) async {
+Future<void> sendWithRetry(
+  PhoenixChannel channel,
+  String event,
+  Map<String, dynamic> payload,
+) async {
   while (true) {
     try {
       await channel.push(event, payload);
       return;
     } on PhoenixException catch (e) {
       if (e.message == 'Socket disconnected') {
-        // Wait for channel to rejoin before retrying
-        await channel.states // if you added a states stream; or just delay:
-        await Future.delayed(const Duration(seconds: 1));
+        // Wait a moment for the channel to rejoin, then retry.
+        await Future<void>.delayed(const Duration(seconds: 1));
         continue;
       }
       rethrow; // server error — don't retry

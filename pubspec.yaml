@@ -1,10 +1,19 @@
 name: phoenix_socket
-description: A lightweight Phoenix Channel V2 client for Dart using web_socket_channel and Streams.
+description: >-
+  A lightweight Phoenix Channel V2 client for Dart and Flutter. Supports
+  automatic reconnection, push buffering, heartbeat, and Phoenix Presence.
 version: 0.1.0
-repository: https://github.com/example/phoenix_socket
+repository: https://github.com/yoavgeva/phoenix_socket
 
 environment:
   sdk: ^3.11.0
+
+topics:
+  - phoenix
+  - websocket
+  - channels
+  - realtime
+  - flutter
 
 dependencies:
   meta: ^1.9.0
