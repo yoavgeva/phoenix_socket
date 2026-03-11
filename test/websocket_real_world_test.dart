@@ -83,28 +83,43 @@ class RealWorldSetup {
       (jsonDecode(raw as String) as List)[2] as String;
   String msgEvent(dynamic raw) =>
       (jsonDecode(raw as String) as List)[3] as String;
-  dynamic msgPayload(dynamic raw) =>
-      (jsonDecode(raw as String) as List)[4];
+  dynamic msgPayload(dynamic raw) => (jsonDecode(raw as String) as List)[4];
 
-  void replyOk(String joinRef, String ref, String topic,
-      [Map<String, dynamic> resp = const {}]) {
-    sendToClient(
-        [joinRef, ref, topic, 'phx_reply', {'status': 'ok', 'response': resp}]);
-  }
-
-  void replyError(String joinRef, String ref, String topic,
-      [Map<String, dynamic> resp = const {}]) {
+  void replyOk(
+    String joinRef,
+    String ref,
+    String topic, [
+    Map<String, dynamic> resp = const {},
+  ]) {
     sendToClient([
       joinRef,
       ref,
       topic,
       'phx_reply',
-      {'status': 'error', 'response': resp}
+      {'status': 'ok', 'response': resp},
     ]);
   }
 
-  void replyJoinOk(String ref, String topic,
-      [Map<String, dynamic> resp = const {}]) {
+  void replyError(
+    String joinRef,
+    String ref,
+    String topic, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    sendToClient([
+      joinRef,
+      ref,
+      topic,
+      'phx_reply',
+      {'status': 'error', 'response': resp},
+    ]);
+  }
+
+  void replyJoinOk(
+    String ref,
+    String topic, [
+    Map<String, dynamic> resp = const {},
+  ]) {
     replyOk(ref, ref, topic, resp);
   }
 
@@ -138,26 +153,27 @@ void main() {
   // 1. NAT / load-balancer silent idle timeout
   // =========================================================================
   group('NAT and LB idle timeout', () {
-    test('1. idle connection silently dropped after 10 min — heartbeat detects it',
-        () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        // Flush connect() async work (ready future, setState, startHeartbeat)
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 30))
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 30))
-          ..flushMicrotasks();
-        expect(s.socket.state, PhoenixSocketState.reconnecting);
-      });
-    });
+    test(
+      '1. idle connection silently dropped after 10 min — heartbeat detects it',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          // Flush connect() async work (ready future, setState, startHeartbeat)
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks();
+          expect(s.socket.state, PhoenixSocketState.reconnecting);
+        });
+      },
+    );
 
-    test('2. heartbeat reply resets pending ref — no false reconnect',
-        () {
+    test('2. heartbeat reply resets pending ref — no false reconnect', () {
       fakeAsync((async) {
         final s = RealWorldSetup()..init();
         unawaited(s.socket.connect());
@@ -168,8 +184,13 @@ void main() {
           ..elapse(const Duration(seconds: 30))
           ..flushMicrotasks();
         final hbRef = s.msgRef(s.sent.last);
-        s.sendToClient([null, hbRef, 'phoenix', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+        s.sendToClient([
+          null,
+          hbRef,
+          'phoenix',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
         async
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 30))
@@ -178,18 +199,20 @@ void main() {
       });
     });
 
-    test('3. LB closes idle connection after 60s — client detects via _onDone',
-        () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      await flush();
+    test(
+      '3. LB closes idle connection after 60s — client detects via _onDone',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        await flush();
 
-      // LB closes after 60s of inactivity (before 30s heartbeat reply window).
-      // Simulate with server sink close.
-      unawaited(s.server.sink.close());
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.reconnecting);
-    });
+        // LB closes after 60s of inactivity (before 30s heartbeat reply window).
+        // Simulate with server sink close.
+        unawaited(s.server.sink.close());
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.reconnecting);
+      },
+    );
 
     test('4. reconnect after NAT timeout rejoins all channels', () async {
       final s = RealWorldSetup()..init();
@@ -228,21 +251,24 @@ void main() {
       expect(ch1.state, PhoenixChannelState.closed);
     });
 
-    test('6. leave reply arrives after socket crashes — no error thrown', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:crash');
+    test(
+      '6. leave reply arrives after socket crashes — no error thrown',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:crash');
 
-      final leaveFuture = ch.leave();
-      await flush();
+        final leaveFuture = ch.leave();
+        await flush();
 
-      // Socket crashes before leave reply
-      s.killNetwork();
-      await flush();
+        // Socket crashes before leave reply
+        s.killNetwork();
+        await flush();
 
-      // Leave future should complete or error without crashing
-      await leaveFuture.catchError((_) {});
-    });
+        // Leave future should complete or error without crashing
+        await leaveFuture.catchError((_) {});
+      },
+    );
   });
 
   // =========================================================================
@@ -268,35 +294,41 @@ void main() {
       });
     });
 
-    test('8. client detects half-open only via heartbeat — not immediately', () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 29))
-          ..flushMicrotasks();
-        expect(s.socket.state, PhoenixSocketState.connected);
-      });
-    });
+    test(
+      '8. client detects half-open only via heartbeat — not immediately',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 29))
+            ..flushMicrotasks();
+          expect(s.socket.state, PhoenixSocketState.connected);
+        });
+      },
+    );
   });
 
   // =========================================================================
   // 4. Graceful server shutdown
   // =========================================================================
   group('Graceful server shutdown', () {
-    test('9. server closes connection gracefully — client reconnects', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      await flush();
+    test(
+      '9. server closes connection gracefully — client reconnects',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        await flush();
 
-      // Server sends close (graceful shutdown) — stream ends cleanly
-      unawaited(s.server.sink.close());
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.reconnecting);
-    });
+        // Server sends close (graceful shutdown) — stream ends cleanly
+        unawaited(s.server.sink.close());
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.reconnecting);
+      },
+    );
 
     test('10. all channels errored after graceful shutdown', () async {
       final s = RealWorldSetup()..init();
@@ -344,37 +376,46 @@ void main() {
   // 5. Network interface switch (WiFi → cellular)
   // =========================================================================
   group('Network interface switch', () {
-    test('12. switch mid-push — push errors or times out after network drop', () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        final ch = s.socket.channel('room:switch');
-        unawaited(ch.join());
-        async.flushMicrotasks();
-        final jRef = s.msgRef(s.sent.last);
-        s.replyJoinOk(jRef, 'room:switch');
-        async.flushMicrotasks();
+    test(
+      '12. switch mid-push — push errors or times out after network drop',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          final ch = s.socket.channel('room:switch');
+          unawaited(ch.join());
+          async.flushMicrotasks();
+          final jRef = s.msgRef(s.sent.last);
+          s.replyJoinOk(jRef, 'room:switch');
+          async.flushMicrotasks();
 
-        var pushErrored = false;
-        unawaited(ch.push('event', {'data': 'x'}).then(
-          (_) {},
-          onError: (_) { pushErrored = true; },
-        ));
-        async.flushMicrotasks();
+          var pushErrored = false;
+          unawaited(
+            ch
+                .push('event', {'data': 'x'})
+                .then(
+                  (_) {},
+                  onError: (_) {
+                    pushErrored = true;
+                  },
+                ),
+          );
+          async.flushMicrotasks();
 
-        // Network switches — old connection dies
-        s.killNetwork();
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 11))
-          ..flushMicrotasks();
-        expect(pushErrored, isTrue);
-      });
-    });
+          // Network switches — old connection dies
+          s.killNetwork();
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 11))
+            ..flushMicrotasks();
+          expect(pushErrored, isTrue);
+        });
+      },
+    );
 
     test('13. new connection established after switch — sends are fresh', () {
       fakeAsync((async) {
@@ -409,43 +450,84 @@ void main() {
       await s.connect();
       final ch = s.socket.channel('room:err');
       var errored = false;
-      final f = ch.join().then((_) {}, onError: (_) { errored = true; });
+      final f = ch.join().then(
+        (_) {},
+        onError: (_) {
+          errored = true;
+        },
+      );
       await flush();
       final jRef = s.msgRef(s.sent.last);
       // Server sends phx_error instead of join reply
-      s.sendToClient([jRef, jRef, 'room:err', 'phx_error', <String, dynamic>{}]);
+      s.sendToClient([
+        jRef,
+        jRef,
+        'room:err',
+        'phx_error',
+        <String, dynamic>{},
+      ]);
       await flush();
       await f;
       expect(errored, isTrue);
       expect(ch.state, PhoenixChannelState.errored);
     });
 
-    test('15. multiple phx_error events — channel stays errored, no crash', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:multi-err');
+    test(
+      '15. multiple phx_error events — channel stays errored, no crash',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:multi-err');
 
-      // Send phx_error multiple times
-      s.sendToClient([null, null, 'room:multi-err', 'phx_error', <String, dynamic>{}]);
-      await flush();
-      s.sendToClient([null, null, 'room:multi-err', 'phx_error', <String, dynamic>{}]);
-      await flush();
-      s.sendToClient([null, null, 'room:multi-err', 'phx_error', <String, dynamic>{}]);
-      await flush();
-      expect(ch.state, PhoenixChannelState.errored);
-    });
+        // Send phx_error multiple times
+        s.sendToClient([
+          null,
+          null,
+          'room:multi-err',
+          'phx_error',
+          <String, dynamic>{},
+        ]);
+        await flush();
+        s.sendToClient([
+          null,
+          null,
+          'room:multi-err',
+          'phx_error',
+          <String, dynamic>{},
+        ]);
+        await flush();
+        s.sendToClient([
+          null,
+          null,
+          'room:multi-err',
+          'phx_error',
+          <String, dynamic>{},
+        ]);
+        await flush();
+        expect(ch.state, PhoenixChannelState.errored);
+      },
+    );
 
-    test('16. phx_error on one channel does not affect sibling channels', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final chA = await s.joinedChannel('room:a');
-      final chB = await s.joinedChannel('room:b');
+    test(
+      '16. phx_error on one channel does not affect sibling channels',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final chA = await s.joinedChannel('room:a');
+        final chB = await s.joinedChannel('room:b');
 
-      s.sendToClient([null, null, 'room:a', 'phx_error', <String, dynamic>{}]);
-      await flush();
-      expect(chA.state, PhoenixChannelState.errored);
-      expect(chB.state, PhoenixChannelState.joined);
-    });
+        s.sendToClient([
+          null,
+          null,
+          'room:a',
+          'phx_error',
+          <String, dynamic>{},
+        ]);
+        await flush();
+        expect(chA.state, PhoenixChannelState.errored);
+        expect(chB.state, PhoenixChannelState.joined);
+      },
+    );
   });
 
   // =========================================================================
@@ -461,9 +543,11 @@ void main() {
       final largeData = 'x' * (1024 * 1024);
       var result = false;
       fakeAsync((async) {
-        unawaited(ch.push('big_event', {'data': largeData}).then((_) {
-          result = true;
-        }));
+        unawaited(
+          ch.push('big_event', {'data': largeData}).then((_) {
+            result = true;
+          }),
+        );
         async.flushMicrotasks();
         final pushRef = s.msgRef(s.sent.last);
         final joinRef = s.msgJoinRef(s.sent.last);
@@ -517,10 +601,18 @@ void main() {
         // Start push — don't reply yet
         var pushDone = false;
         var pushErrored = false;
-        unawaited(ch.push('event', {}).then(
-          (_) { pushDone = true; },
-          onError: (_) { pushErrored = true; },
-        ));
+        unawaited(
+          ch
+              .push('event', {})
+              .then(
+                (_) {
+                  pushDone = true;
+                },
+                onError: (_) {
+                  pushErrored = true;
+                },
+              ),
+        );
         async.flushMicrotasks();
 
         // Capture push ref before leave
@@ -544,68 +636,80 @@ void main() {
       });
     });
 
-    test('20. push timeout fires after channel left — no double-complete crash', () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        final ch = s.socket.channel('room:timeout-left');
-        unawaited(ch.join());
-        async.flushMicrotasks();
-        final jRef = s.msgRef(s.sent.last);
-        s.replyJoinOk(jRef, 'room:timeout-left');
-        async.flushMicrotasks();
+    test(
+      '20. push timeout fires after channel left — no double-complete crash',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          final ch = s.socket.channel('room:timeout-left');
+          unawaited(ch.join());
+          async.flushMicrotasks();
+          final jRef = s.msgRef(s.sent.last);
+          s.replyJoinOk(jRef, 'room:timeout-left');
+          async.flushMicrotasks();
 
-        var pushErrored = false;
-        unawaited(ch.push('event', {}).then(
-          (_) {},
-          onError: (_) { pushErrored = true; },
-        ));
-        async.flushMicrotasks();
+          var pushErrored = false;
+          unawaited(
+            ch
+                .push('event', {})
+                .then(
+                  (_) {},
+                  onError: (_) {
+                    pushErrored = true;
+                  },
+                ),
+          );
+          async.flushMicrotasks();
 
-        // Leave before push timeout
-        unawaited(ch.leave());
-        async.flushMicrotasks();
-        final leaveRef = s.msgRef(s.sent.last);
-        s.replyOk(jRef, leaveRef, 'room:timeout-left');
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 11))
-          ..flushMicrotasks();
-        expect(pushErrored, isTrue);
-      });
-    });
+          // Leave before push timeout
+          unawaited(ch.leave());
+          async.flushMicrotasks();
+          final leaveRef = s.msgRef(s.sent.last);
+          s.replyOk(jRef, leaveRef, 'room:timeout-left');
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 11))
+            ..flushMicrotasks();
+          expect(pushErrored, isTrue);
+        });
+      },
+    );
   });
 
   // =========================================================================
   // 9. Reconnect timing races
   // =========================================================================
   group('Reconnect timing races', () {
-    test('21. disconnect called while reconnect timer pending — no reconnect', () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 1))
-          ..flushMicrotasks();
-        s.killNetwork();
-        async.flushMicrotasks();
-        expect(s.socket.state, PhoenixSocketState.reconnecting);
+    test(
+      '21. disconnect called while reconnect timer pending — no reconnect',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 1))
+            ..flushMicrotasks();
+          s.killNetwork();
+          async.flushMicrotasks();
+          expect(s.socket.state, PhoenixSocketState.reconnecting);
 
-        // Call disconnect before timer fires
-        unawaited(s.socket.disconnect());
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 2))
-          ..flushMicrotasks();
-        expect(s.connectCount, 1);
-        expect(s.socket.state, PhoenixSocketState.disconnected);
-      });
-    });
+          // Call disconnect before timer fires
+          unawaited(s.socket.disconnect());
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 2))
+            ..flushMicrotasks();
+          expect(s.connectCount, 1);
+          expect(s.socket.state, PhoenixSocketState.disconnected);
+        });
+      },
+    );
 
     test('22. connect called while reconnect timer pending — no duplicate', () {
       fakeAsync((async) {
@@ -671,7 +775,10 @@ void main() {
             ..elapse(Duration(seconds: [1, 2, 4][i] + 1))
             ..flushMicrotasks();
         }
-        expect(s.connectCount, greaterThanOrEqualTo(4)); // initial + 3 reconnects
+        expect(
+          s.connectCount,
+          greaterThanOrEqualTo(4),
+        ); // initial + 3 reconnects
       });
     });
   });
@@ -696,7 +803,11 @@ void main() {
       final ch2 = s.socket.channel('room:fresh');
       var joined = false;
       fakeAsync((async) {
-        unawaited(ch2.join().then((_) { joined = true; }));
+        unawaited(
+          ch2.join().then((_) {
+            joined = true;
+          }),
+        );
         async.flushMicrotasks();
         final ref = s.msgRef(s.sent.last);
         s.replyJoinOk(ref, 'room:fresh');
@@ -707,35 +818,41 @@ void main() {
       });
     });
 
-    test('26. socket state stream emits disconnected on explicit disconnect', () async {
-      final s = RealWorldSetup()..init();
-      final states = <PhoenixSocketState>[];
-      s.socket.states.listen(states.add);
-      await s.connect();
-      await flush();
-      await s.socket.disconnect();
-      await flush();
-      expect(states, contains(PhoenixSocketState.disconnected));
-    });
+    test(
+      '26. socket state stream emits disconnected on explicit disconnect',
+      () async {
+        final s = RealWorldSetup()..init();
+        final states = <PhoenixSocketState>[];
+        s.socket.states.listen(states.add);
+        await s.connect();
+        await flush();
+        await s.socket.disconnect();
+        await flush();
+        expect(states, contains(PhoenixSocketState.disconnected));
+      },
+    );
 
-    test('27. ref counter does not reset after disconnect → reconnect', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
+    test(
+      '27. ref counter does not reset after disconnect → reconnect',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
 
-      // Generate some refs
-      final r1 = s.socket.nextRef();
-      final r2 = s.socket.nextRef();
-      final ref1 = int.parse(r1);
-      final ref2 = int.parse(r2);
-      expect(ref2, ref1 + 1);
+        // Generate some refs
+        final r1 = s.socket.nextRef();
+        final r2 = s.socket.nextRef();
+        final ref1 = int.parse(r1);
+        final ref2 = int.parse(r2);
+        expect(ref2, ref1 + 1);
 
-      await s.socket.disconnect();
-      await s.socket.connect();
-      await flush();
+        await s.socket.disconnect();
+        await s.socket.connect();
+        await flush();
 
-      final r3 = s.socket.nextRef();
-      expect(int.parse(r3), greaterThan(ref2));
-    });
+        final r3 = s.socket.nextRef();
+        expect(int.parse(r3), greaterThan(ref2));
+      },
+    );
   });
 
   // =========================================================================
@@ -765,7 +882,11 @@ void main() {
 
       var pushDone = false;
       fakeAsync((async) {
-        unawaited(ch.push('do_thing', {}).then((_) { pushDone = true; }));
+        unawaited(
+          ch.push('do_thing', {}).then((_) {
+            pushDone = true;
+          }),
+        );
         async.flushMicrotasks();
         final pushRef = s.msgRef(s.sent.last);
         final joinRef = s.msgJoinRef(s.sent.last);
@@ -808,7 +929,11 @@ void main() {
 
       var done = false;
       fakeAsync((async) {
-        unawaited(ch.push('ping', {}).then((_) { done = true; }));
+        unawaited(
+          ch.push('ping', {}).then((_) {
+            done = true;
+          }),
+        );
         async.flushMicrotasks();
         final ref = s.msgRef(s.sent.last);
         final jRef = s.msgJoinRef(s.sent.last);
@@ -826,7 +951,11 @@ void main() {
       final ch = s.socket.channel('room:emptyjoin');
       var joined = false;
       fakeAsync((async) {
-        unawaited(ch.join(payload: {}).then((_) { joined = true; }));
+        unawaited(
+          ch.join(payload: {}).then((_) {
+            joined = true;
+          }),
+        );
         async.flushMicrotasks();
         final ref = s.msgRef(s.sent.last);
         s.replyJoinOk(ref, 'room:emptyjoin');
@@ -837,83 +966,105 @@ void main() {
       });
     });
 
-    test('33. push payload with nested structure preserved round-trip', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:nested');
-      final payload = {
-        'user': {'id': 42, 'name': 'Alice'},
-        'tags': ['a', 'b', 'c'],
-        'meta': {'score': 3.14}
-      };
+    test(
+      '33. push payload with nested structure preserved round-trip',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:nested');
+        final payload = {
+          'user': {'id': 42, 'name': 'Alice'},
+          'tags': ['a', 'b', 'c'],
+          'meta': {'score': 3.14},
+        };
 
-      fakeAsync((async) {
-        unawaited(ch.push('complex', payload));
-        async.flushMicrotasks();
-        final raw = s.sent.last as String;
-        final decoded = jsonDecode(raw) as List;
-        expect(decoded[4], payload);
-      });
-    });
+        fakeAsync((async) {
+          unawaited(ch.push('complex', payload));
+          async.flushMicrotasks();
+          final raw = s.sent.last as String;
+          final decoded = jsonDecode(raw) as List;
+          expect(decoded[4], payload);
+        });
+      },
+    );
   });
 
   // =========================================================================
   // 13. Heartbeat does not interfere with pushes
   // =========================================================================
   group('Heartbeat and push coexistence', () {
-    test('34. heartbeat fires during push in-flight — push still resolves',
-        () async {
-      // Simulate: push is in-flight, heartbeat fires and gets a reply, then push gets a reply.
-      // This verifies heartbeat handling doesn't corrupt push pending refs.
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:hb34');
+    test(
+      '34. heartbeat fires during push in-flight — push still resolves',
+      () async {
+        // Simulate: push is in-flight, heartbeat fires and gets a reply, then push gets a reply.
+        // This verifies heartbeat handling doesn't corrupt push pending refs.
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:hb34');
 
-      var pushDone = false;
-      unawaited(ch.push('my_custom_push', {}).then((_) { pushDone = true; }));
-      await flush(4);
-      final pushMsg = s.sent.lastWhere(
-          (raw) => s.msgEvent(raw) == 'my_custom_push');
-      final pushRef = s.msgRef(pushMsg);
-      final pushJoinRef = s.msgJoinRef(pushMsg);
+        var pushDone = false;
+        unawaited(
+          ch.push('my_custom_push', {}).then((_) {
+            pushDone = true;
+          }),
+        );
+        await flush(4);
+        final pushMsg = s.sent.lastWhere(
+          (raw) => s.msgEvent(raw) == 'my_custom_push',
+        );
+        final pushRef = s.msgRef(pushMsg);
+        final pushJoinRef = s.msgJoinRef(pushMsg);
 
-      // Simulate heartbeat arriving in the middle — just send a fake heartbeat reply
-      // (as if the timer fired and the server replied)
-      const fakeHbRef = 'hb-fake-999';
-      s.sendToClient([null, fakeHbRef, 'phoenix', 'phx_reply',
-        {'status': 'ok', 'response': <String, dynamic>{}}]);
-      await flush(4);
+        // Simulate heartbeat arriving in the middle — just send a fake heartbeat reply
+        // (as if the timer fired and the server replied)
+        const fakeHbRef = 'hb-fake-999';
+        s.sendToClient([
+          null,
+          fakeHbRef,
+          'phoenix',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
+        await flush(4);
 
-      // Push reply arrives after heartbeat
-      s.replyOk(pushJoinRef, pushRef, 'room:hb34');
-      await flush();
-      expect(pushDone, isTrue);
-      expect(s.socket.state, PhoenixSocketState.connected);
-    });
-
-    test('35. push reply misidentified as heartbeat reply — not confused', () async {
-      // Heartbeat replies go to topic "phoenix". Push replies go to channel topic.
-      // They should never be confused.
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:nohb');
-      final events = <PhoenixMessage>[];
-      ch.messages.listen(events.add);
-
-      var pushDone = false;
-      fakeAsync((async) {
-        unawaited(ch.push('action', {}).then((_) { pushDone = true; }));
-        async.flushMicrotasks();
-        final ref = s.msgRef(s.sent.last);
-        final jRef = s.msgJoinRef(s.sent.last);
-        s.replyOk(jRef, ref, 'room:nohb');
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks();
+        // Push reply arrives after heartbeat
+        s.replyOk(pushJoinRef, pushRef, 'room:hb34');
+        await flush();
         expect(pushDone, isTrue);
-        expect(events, isEmpty); // phx_reply not emitted to messages stream
-      });
-    });
+        expect(s.socket.state, PhoenixSocketState.connected);
+      },
+    );
+
+    test(
+      '35. push reply misidentified as heartbeat reply — not confused',
+      () async {
+        // Heartbeat replies go to topic "phoenix". Push replies go to channel topic.
+        // They should never be confused.
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:nohb');
+        final events = <PhoenixMessage>[];
+        ch.messages.listen(events.add);
+
+        var pushDone = false;
+        fakeAsync((async) {
+          unawaited(
+            ch.push('action', {}).then((_) {
+              pushDone = true;
+            }),
+          );
+          async.flushMicrotasks();
+          final ref = s.msgRef(s.sent.last);
+          final jRef = s.msgJoinRef(s.sent.last);
+          s.replyOk(jRef, ref, 'room:nohb');
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          expect(pushDone, isTrue);
+          expect(events, isEmpty); // phx_reply not emitted to messages stream
+        });
+      },
+    );
   });
 
   // =========================================================================
@@ -964,7 +1115,9 @@ void main() {
             .where((raw) => s.msgEvent(raw) == 'phx_join')
             .map(s.msgRef)
             .last;
-        s.replyError(newJRef, newJRef, 'room:failrejoin', {'reason': 'forbidden'});
+        s.replyError(newJRef, newJRef, 'room:failrejoin', {
+          'reason': 'forbidden',
+        });
         async.flushMicrotasks();
 
         expect(ch.state, PhoenixChannelState.errored);
@@ -998,70 +1151,80 @@ void main() {
         async.flushMicrotasks();
         expect(
           socket.state,
-          anyOf(PhoenixSocketState.reconnecting, PhoenixSocketState.disconnected),
+          anyOf(
+            PhoenixSocketState.reconnecting,
+            PhoenixSocketState.disconnected,
+          ),
         );
         unawaited(socket.disconnect());
       });
     });
 
-    test('39. connection error → backoff progression → eventually gives up timer', () {
-      fakeAsync((async) {
-        var attempts = 0;
-        final socket = PhoenixSocket(
-          'ws://unreachable:9999/socket',
-          channelFactory: (uri) {
-            attempts++;
-            final fake = FakeWebSocketChannel();
-            unawaited(Future.microtask(() => fake.server.sink.close()));
-            return fake;
-          },
-        );
-        unawaited(socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 1))
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 2))
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        expect(attempts, greaterThanOrEqualTo(2));
-        unawaited(socket.disconnect());
-      });
-    });
+    test(
+      '39. connection error → backoff progression → eventually gives up timer',
+      () {
+        fakeAsync((async) {
+          var attempts = 0;
+          final socket = PhoenixSocket(
+            'ws://unreachable:9999/socket',
+            channelFactory: (uri) {
+              attempts++;
+              final fake = FakeWebSocketChannel();
+              unawaited(Future.microtask(() => fake.server.sink.close()));
+              return fake;
+            },
+          );
+          unawaited(socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 1))
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 2))
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          expect(attempts, greaterThanOrEqualTo(2));
+          unawaited(socket.disconnect());
+        });
+      },
+    );
   });
 
   // =========================================================================
   // 16. Channel join during reconnecting state
   // =========================================================================
   group('Join during reconnecting', () {
-    test('40. channel obtained during reconnecting — can be joined after reconnect',
-        () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        s.killNetwork();
-        async.flushMicrotasks();
-        expect(s.socket.state, PhoenixSocketState.reconnecting);
+    test(
+      '40. channel obtained during reconnecting — can be joined after reconnect',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          s.killNetwork();
+          async.flushMicrotasks();
+          expect(s.socket.state, PhoenixSocketState.reconnecting);
 
-        // Get channel while socket is reconnecting
-        final ch = s.socket.channel('room:late-join');
-        expect(ch.state, PhoenixChannelState.closed);
+          // Get channel while socket is reconnecting
+          final ch = s.socket.channel('room:late-join');
+          expect(ch.state, PhoenixChannelState.closed);
 
-        // Reconnect fires after 1s
-        async
-          ..elapse(const Duration(seconds: 2))
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        expect(s.socket.state,
-          anyOf(PhoenixSocketState.connecting, PhoenixSocketState.connected));
-      });
-    });
+          // Reconnect fires after 1s
+          async
+            ..elapse(const Duration(seconds: 2))
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          expect(
+            s.socket.state,
+            anyOf(PhoenixSocketState.connecting, PhoenixSocketState.connected),
+          );
+        });
+      },
+    );
 
     test('41. push buffered during joining — flushed after join reply', () {
       fakeAsync((async) {
@@ -1078,7 +1241,11 @@ void main() {
 
         // Push before join reply (buffered)
         var pushDone = false;
-        unawaited(ch.push('buffered', {'x': 1}).then((_) { pushDone = true; }));
+        unawaited(
+          ch.push('buffered', {'x': 1}).then((_) {
+            pushDone = true;
+          }),
+        );
         async.flushMicrotasks();
 
         // Join reply arrives
@@ -1107,38 +1274,41 @@ void main() {
   // 17. Thundering herd (many clients reconnect simultaneously)
   // =========================================================================
   group('Thundering herd', () {
-    test('42. 20 sockets with same backoff timing — all get their own timer', () {
-      fakeAsync((async) {
-        final sockets = <PhoenixSocket>[];
-        final connectCounts = <int>[];
-        for (var i = 0; i < 20; i++) {
-          const count = 0;
-          connectCounts.add(0);
-          final idx = i;
-          final socket = PhoenixSocket(
-            'ws://localhost:4000/socket',
-            channelFactory: (uri) {
-              connectCounts[idx]++;
-              return FakeWebSocketChannel();
-            },
-          );
-          sockets.add(socket);
-        }
+    test(
+      '42. 20 sockets with same backoff timing — all get their own timer',
+      () {
+        fakeAsync((async) {
+          final sockets = <PhoenixSocket>[];
+          final connectCounts = <int>[];
+          for (var i = 0; i < 20; i++) {
+            const count = 0;
+            connectCounts.add(0);
+            final idx = i;
+            final socket = PhoenixSocket(
+              'ws://localhost:4000/socket',
+              channelFactory: (uri) {
+                connectCounts[idx]++;
+                return FakeWebSocketChannel();
+              },
+            );
+            sockets.add(socket);
+          }
 
-        // All connect simultaneously
-        for (final s in sockets) {
-          unawaited(s.connect());
-        }
-        async.flushMicrotasks();
-        expect(connectCounts.every((c) => c == 1), isTrue);
+          // All connect simultaneously
+          for (final s in sockets) {
+            unawaited(s.connect());
+          }
+          async.flushMicrotasks();
+          expect(connectCounts.every((c) => c == 1), isTrue);
 
-        // Disconnect all
-        for (final s in sockets) {
-          unawaited(s.disconnect());
-        }
-        async.flushMicrotasks();
-      });
-    });
+          // Disconnect all
+          for (final s in sockets) {
+            unawaited(s.disconnect());
+          }
+          async.flushMicrotasks();
+        });
+      },
+    );
   });
 
   // =========================================================================
@@ -1206,29 +1376,35 @@ void main() {
           ..flushMicrotasks();
         final raw = jsonDecode(s.sent.last as String) as List;
         expect(raw.length, 5);
-        expect(raw[0], isNull);       // joinRef = null
-        expect(raw[2], 'phoenix');     // topic
-        expect(raw[3], 'heartbeat');   // event
-        expect(raw[4], <String, dynamic>{});            // payload = empty map
+        expect(raw[0], isNull); // joinRef = null
+        expect(raw[2], 'phoenix'); // topic
+        expect(raw[3], 'heartbeat'); // event
+        expect(raw[4], <String, dynamic>{}); // payload = empty map
       });
     });
 
-    test('47. push message wire format — joinRef matches channel joinRef', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:fmt');
-      // joinRef was the ref used during join
-      final joinJoinRef = s.msgJoinRef(
-        s.sent.firstWhere((raw) => s.msgEvent(raw) == 'phx_join'));
+    test(
+      '47. push message wire format — joinRef matches channel joinRef',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:fmt');
+        // joinRef was the ref used during join
+        final joinJoinRef = s.msgJoinRef(
+          s.sent.firstWhere((raw) => s.msgEvent(raw) == 'phx_join'),
+        );
 
-      fakeAsync((async) {
-        unawaited(ch.push('action', {}));
-        async.flushMicrotasks();
-        final pushMsg = s.sent.lastWhere((raw) => s.msgEvent(raw) == 'action');
-        final pushJoinRef = s.msgJoinRef(pushMsg);
-        expect(pushJoinRef, joinJoinRef);
-      });
-    });
+        fakeAsync((async) {
+          unawaited(ch.push('action', {}));
+          async.flushMicrotasks();
+          final pushMsg = s.sent.lastWhere(
+            (raw) => s.msgEvent(raw) == 'action',
+          );
+          final pushJoinRef = s.msgJoinRef(pushMsg);
+          expect(pushJoinRef, joinJoinRef);
+        });
+      },
+    );
 
     test('48. leave message wire format', () async {
       final s = RealWorldSetup()..init();
@@ -1262,88 +1438,108 @@ void main() {
       expect(s.socket.state, PhoenixSocketState.connected);
     });
 
-    test('50. null ref in push reply — not matched to any pending push', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:nullref');
-      var pushDone = false;
-      fakeAsync((async) {
-        unawaited(ch.push('action', {}).then((_) { pushDone = true; }));
-        async.flushMicrotasks();
-        final jRef = s.msgJoinRef(s.sent.last);
+    test(
+      '50. null ref in push reply — not matched to any pending push',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:nullref');
+        var pushDone = false;
+        fakeAsync((async) {
+          unawaited(
+            ch.push('action', {}).then((_) {
+              pushDone = true;
+            }),
+          );
+          async.flushMicrotasks();
+          final jRef = s.msgJoinRef(s.sent.last);
 
-        // Server sends reply with null ref — should not match the pending push
-        s.replyOk(jRef, 'null', 'room:nullref');
-        async.flushMicrotasks();
-        expect(pushDone, isFalse);
+          // Server sends reply with null ref — should not match the pending push
+          s.replyOk(jRef, 'null', 'room:nullref');
+          async.flushMicrotasks();
+          expect(pushDone, isFalse);
 
-        // Correct ref resolves
-        final pushRef = s.msgRef(
-          s.sent.lastWhere((raw) => s.msgEvent(raw) == 'action'));
-        s.replyOk(jRef, pushRef, 'room:nullref');
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        expect(pushDone, isTrue);
-      });
-    });
+          // Correct ref resolves
+          final pushRef = s.msgRef(
+            s.sent.lastWhere((raw) => s.msgEvent(raw) == 'action'),
+          );
+          s.replyOk(jRef, pushRef, 'room:nullref');
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          expect(pushDone, isTrue);
+        });
+      },
+    );
   });
 
   // =========================================================================
   // 19. App backgrounding simulation (no timer ticks)
   // =========================================================================
   group('App backgrounding', () {
-    test('51. no activity for 30min — heartbeat detects dead connection on resume', () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          // first heartbeat sent
-          ..elapse(const Duration(seconds: 30))
-          ..flushMicrotasks()
-          // no reply → reconnect
-          ..elapse(const Duration(seconds: 30))
-          ..flushMicrotasks();
-        expect(s.socket.state, PhoenixSocketState.reconnecting);
-      });
-    });
+    test(
+      '51. no activity for 30min — heartbeat detects dead connection on resume',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            // first heartbeat sent
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks()
+            // no reply → reconnect
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks();
+          expect(s.socket.state, PhoenixSocketState.reconnecting);
+        });
+      },
+    );
 
-    test('52. resumed after backgrounding — channels rejoin after reconnect', () {
-      fakeAsync((async) {
-        final s = RealWorldSetup()..init();
-        unawaited(s.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        final ch = s.socket.channel('room:bg');
-        unawaited(ch.join());
-        async.flushMicrotasks();
-        final jRef = s.msgRef(s.sent.last);
-        s.replyJoinOk(jRef, 'room:bg');
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 30))
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 30))
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 2))
-          ..flushMicrotasks();
-        expect(ch.state, anyOf(
-          PhoenixChannelState.joining,
-          PhoenixChannelState.joined,
-          PhoenixChannelState.errored,
-        ));
-        // New join was sent
-        final joinsSent = s.sent
-            .where((raw) => s.msgEvent(raw) == 'phx_join')
-            .toList();
-        expect(joinsSent.length, greaterThanOrEqualTo(2)); // original + rejoin
-      });
-    });
+    test(
+      '52. resumed after backgrounding — channels rejoin after reconnect',
+      () {
+        fakeAsync((async) {
+          final s = RealWorldSetup()..init();
+          unawaited(s.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          final ch = s.socket.channel('room:bg');
+          unawaited(ch.join());
+          async.flushMicrotasks();
+          final jRef = s.msgRef(s.sent.last);
+          s.replyJoinOk(jRef, 'room:bg');
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 30))
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 2))
+            ..flushMicrotasks();
+          expect(
+            ch.state,
+            anyOf(
+              PhoenixChannelState.joining,
+              PhoenixChannelState.joined,
+              PhoenixChannelState.errored,
+            ),
+          );
+          // New join was sent
+          final joinsSent = s.sent
+              .where((raw) => s.msgEvent(raw) == 'phx_join')
+              .toList();
+          expect(
+            joinsSent.length,
+            greaterThanOrEqualTo(2),
+          ); // original + rejoin
+        });
+      },
+    );
   });
 
   // =========================================================================
@@ -1367,7 +1563,10 @@ void main() {
       }
       await flush(20);
       await Future.wait(futures);
-      expect(channels.every((ch) => ch.state == PhoenixChannelState.joined), isTrue);
+      expect(
+        channels.every((ch) => ch.state == PhoenixChannelState.joined),
+        isTrue,
+      );
     });
 
     test('54. push on 3 channels simultaneously — all refs unique', () {
@@ -1402,21 +1601,27 @@ void main() {
       });
     });
 
-    test('55. disconnect during multi-channel join storm — clean teardown', () async {
-      final s = RealWorldSetup()..init();
-      await s.connect();
+    test(
+      '55. disconnect during multi-channel join storm — clean teardown',
+      () async {
+        final s = RealWorldSetup()..init();
+        await s.connect();
 
-      final channels = List.generate(10, (i) => s.socket.channel('room:storm$i'));
-      final futures = channels
-          .map((ch) => ch.join().then((_) {}, onError: (_) {}))
-          .toList();
-      await flush();
+        final channels = List.generate(
+          10,
+          (i) => s.socket.channel('room:storm$i'),
+        );
+        final futures = channels
+            .map((ch) => ch.join().then((_) {}, onError: (_) {}))
+            .toList();
+        await flush();
 
-      // Disconnect before any joins complete
-      await s.socket.disconnect();
-      await flush(10);
-      await Future.wait(futures);
-      expect(s.socket.state, PhoenixSocketState.disconnected);
-    });
+        // Disconnect before any joins complete
+        await s.socket.disconnect();
+        await flush(10);
+        await Future.wait(futures);
+        expect(s.socket.state, PhoenixSocketState.disconnected);
+      },
+    );
   });
 }

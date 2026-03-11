@@ -74,7 +74,8 @@ class PhoenixMessage {
   String encode() => jsonEncode(toJson());
 
   @override
-  String toString() => 'PhoenixMessage('
+  String toString() =>
+      'PhoenixMessage('
       'joinRef: $joinRef, '
       'ref: $ref, '
       'topic: $topic, '

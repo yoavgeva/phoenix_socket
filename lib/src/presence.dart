@@ -18,22 +18,24 @@ typedef PresenceState = Map<String, PresenceEntry>;
 /// [key] — the presence key (e.g. user ID).
 /// [current] — the existing entry before the change, or `null` if brand new.
 /// [newPres] — the entry containing only the newly joined metas.
-typedef OnJoin = void Function(
-  String key,
-  PresenceEntry? current,
-  PresenceEntry newPres,
-);
+typedef OnJoin =
+    void Function(
+      String key,
+      PresenceEntry? current,
+      PresenceEntry newPres,
+    );
 
 /// Callback fired when a key loses metas or leaves entirely.
 ///
 /// [key] — the presence key.
 /// [current] — the entry *after* removal (may have 0 metas if fully gone).
 /// [leftPres] — the entry containing only the metas that left.
-typedef OnLeave = void Function(
-  String key,
-  PresenceEntry current,
-  PresenceEntry leftPres,
-);
+typedef OnLeave =
+    void Function(
+      String key,
+      PresenceEntry current,
+      PresenceEntry leftPres,
+    );
 
 /// Manages Phoenix Presence state for a channel.
 ///
@@ -146,10 +148,12 @@ class PhoenixPresence {
       final currentPres = state[key];
 
       if (currentPres != null) {
-        final newRefs =
-            newPres.metas.map((m) => m['phx_ref'] as String).toSet();
-        final curRefs =
-            currentPres.metas.map((m) => m['phx_ref'] as String).toSet();
+        final newRefs = newPres.metas
+            .map((m) => m['phx_ref'] as String)
+            .toSet();
+        final curRefs = currentPres.metas
+            .map((m) => m['phx_ref'] as String)
+            .toSet();
 
         final joinedMetas = newPres.metas
             .where((m) => !curRefs.contains(m['phx_ref']))
@@ -208,8 +212,9 @@ class PhoenixPresence {
       if (currentPres != null) {
         // Mirror JS: state[key].metas.unshift(...curMetas)
         // Old surviving metas come FIRST, new joined metas appended after.
-        final joinedRefs =
-            result[key]!.metas.map((m) => m['phx_ref'] as String).toSet();
+        final joinedRefs = result[key]!.metas
+            .map((m) => m['phx_ref'] as String)
+            .toSet();
         final curMetas = currentPres.metas
             .where((m) => !joinedRefs.contains(m['phx_ref']))
             .toList();
@@ -231,8 +236,9 @@ class PhoenixPresence {
       final currentPres = result[key];
       if (currentPres == null) continue;
 
-      final refsToRemove =
-          leftPres.metas.map((m) => m['phx_ref'] as String).toSet();
+      final refsToRemove = leftPres.metas
+          .map((m) => m['phx_ref'] as String)
+          .toSet();
       final remaining = currentPres.metas
           .where((m) => !refsToRemove.contains(m['phx_ref']))
           .toList();
@@ -319,7 +325,8 @@ class PhoenixPresence {
   }
 
   static Map<String, PresenceEntry> _cloneEntryMap(
-      Map<String, PresenceEntry> map) {
+    Map<String, PresenceEntry> map,
+  ) {
     return map.map((k, v) {
       final cloned = jsonDecode(jsonEncode(v.metas)) as List;
       return MapEntry(

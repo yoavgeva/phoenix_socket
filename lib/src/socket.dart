@@ -33,9 +33,9 @@ class PhoenixSocket {
     String url, {
     Map<String, String> params = const {},
     WebSocketChannel Function(Uri)? channelFactory,
-  })  : _url = url,
-        _params = params,
-        _channelFactory = channelFactory ?? WebSocketChannel.connect;
+  }) : _url = url,
+       _params = params,
+       _channelFactory = channelFactory ?? WebSocketChannel.connect;
 
   final String _url;
   final Map<String, String> _params;
@@ -180,8 +180,9 @@ class PhoenixSocket {
 
       // Route to channel
       _channels[message.topic]?.receive(message);
-    } on Exception {
-      // Ignore malformed messages — do not disconnect.
+    } catch (_) {
+      // Ignore malformed messages (TypeError, FormatException, etc.) —
+      // do not disconnect.
     }
   }
 
@@ -234,13 +235,15 @@ class PhoenixSocket {
       }
       final ref = nextRef();
       _pendingHeartbeatRef = ref;
-      send(PhoenixMessage(
-        joinRef: null,
-        ref: ref,
-        topic: 'phoenix',
-        event: 'heartbeat',
-        payload: const {},
-      ));
+      send(
+        PhoenixMessage(
+          joinRef: null,
+          ref: ref,
+          topic: 'phoenix',
+          event: 'heartbeat',
+          payload: const {},
+        ),
+      );
     });
   }
 

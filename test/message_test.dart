@@ -12,7 +12,7 @@ void main() {
           '2',
           'room:lobby',
           'new_msg',
-          {'body': 'hello'}
+          {'body': 'hello'},
         ]);
         expect(msg.joinRef, '1');
         expect(msg.ref, '2');
@@ -22,8 +22,13 @@ void main() {
       });
 
       test('parses null joinRef (server broadcast)', () {
-        final msg = PhoenixMessage.fromJson(
-            const [null, '2', 'room:lobby', 'presence_state', <String, dynamic>{}]);
+        final msg = PhoenixMessage.fromJson(const [
+          null,
+          '2',
+          'room:lobby',
+          'presence_state',
+          <String, dynamic>{},
+        ]);
         expect(msg.joinRef, isNull);
         expect(msg.ref, '2');
       });
@@ -34,7 +39,7 @@ void main() {
           null,
           'room:lobby',
           'new_msg',
-          {'body': 'hi'}
+          {'body': 'hi'},
         ]);
         expect(msg.ref, isNull);
       });
@@ -45,7 +50,7 @@ void main() {
           'r1',
           'topic',
           'event',
-          {'key': 'value'}
+          {'key': 'value'},
         ]);
         expect(msg.joinRef, 'j1');
         expect(msg.ref, 'r1');
@@ -70,14 +75,26 @@ void main() {
 
       test('throws on null topic', () {
         expect(
-          () => PhoenixMessage.fromJson(const [null, null, null, 'event', <String, dynamic>{}]),
+          () => PhoenixMessage.fromJson(const [
+            null,
+            null,
+            null,
+            'event',
+            <String, dynamic>{},
+          ]),
           throwsA(isA<FormatException>()),
         );
       });
 
       test('throws on null event', () {
         expect(
-          () => PhoenixMessage.fromJson(const [null, null, 'topic', null, <String, dynamic>{}]),
+          () => PhoenixMessage.fromJson(const [
+            null,
+            null,
+            'topic',
+            null,
+            <String, dynamic>{},
+          ]),
           throwsA(isA<FormatException>()),
         );
       });
@@ -90,7 +107,7 @@ void main() {
           '2',
           'room:lobby',
           'new_msg',
-          {'body': 'hello'}
+          {'body': 'hello'},
         ];
         final msg = PhoenixMessage.fromJson(original);
         expect(msg.toJson(), original);
@@ -109,7 +126,7 @@ void main() {
           '2',
           'topic',
           'event',
-          {'k': 'v'}
+          {'k': 'v'},
         ]);
         final encoded = msg.encode();
         final decoded = jsonDecode(encoded) as List<dynamic>;
@@ -124,7 +141,7 @@ void main() {
           'r1',
           'room:test',
           'my_event',
-          {'x': 1}
+          {'x': 1},
         ]);
         final roundTripped = PhoenixMessage.fromJson(msg.toJson());
         expect(roundTripped, equals(msg));

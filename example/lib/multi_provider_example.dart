@@ -289,8 +289,8 @@ class FeedProvider extends ChangeNotifier {
         'cursor': cursor,
         'limit': 20,
       });
-      final newItems = (reply['items'] as List? ?? [])
-          .cast<Map<String, dynamic>>();
+      final newItems =
+          (reply['items'] as List? ?? []).cast<Map<String, dynamic>>();
       items.addAll(newItems);
     } on PhoenixException catch (e) {
       error = e.message;
@@ -422,8 +422,7 @@ class _MultiProviderState extends State<MultiProvider> {
   @override
   void initState() {
     super.initState();
-    _notifiers =
-        widget.providers.map((p) => p.create(context)).toList();
+    _notifiers = widget.providers.map((p) => p.create(context)).toList();
   }
 
   @override

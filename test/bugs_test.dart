@@ -48,31 +48,39 @@ class TestSetup {
     return msg[0] as String;
   }
 
-  void replyJoinOk(String ref, String topic,
-      {Map<String, dynamic> response = const {}}) {
+  void replyJoinOk(
+    String ref,
+    String topic, {
+    Map<String, dynamic> response = const {},
+  }) {
     sendToClient([
       ref,
       ref,
       topic,
       'phx_reply',
-      {'status': 'ok', 'response': response}
+      {'status': 'ok', 'response': response},
     ]);
   }
 
-  void replyJoinError(String ref, String topic,
-      {Map<String, dynamic> response = const {}}) {
+  void replyJoinError(
+    String ref,
+    String topic, {
+    Map<String, dynamic> response = const {},
+  }) {
     sendToClient([
       ref,
       ref,
       topic,
       'phx_reply',
-      {'status': 'error', 'response': response}
+      {'status': 'error', 'response': response},
     ]);
   }
 }
 
-Future<PhoenixChannel> joinedChannel(TestSetup setup,
-    {String topic = 'room:lobby'}) async {
+Future<PhoenixChannel> joinedChannel(
+  TestSetup setup, {
+  String topic = 'room:lobby',
+}) async {
   final ch = setup.socket.channel(topic);
   final joinFuture = ch.join();
   await Future.microtask(() {});
@@ -92,78 +100,82 @@ void main() {
     // incrementing _reconnectAttempts twice and scheduling two timers.
     // -------------------------------------------------------------------------
     group('Bug 1: heartbeat timeout does not double-schedule reconnect', () {
-      test('_reconnectAttempts increments exactly once on heartbeat timeout',
-          () {
-        fakeAsync((async) {
-          var connectCount = 0;
-          final socket = PhoenixSocket(
-            'ws://localhost:4000/socket/websocket',
-            channelFactory: (uri) {
-              connectCount++;
-              return FakeWebSocketChannel();
-            },
-          );
+      test(
+        '_reconnectAttempts increments exactly once on heartbeat timeout',
+        () {
+          fakeAsync((async) {
+            var connectCount = 0;
+            final socket = PhoenixSocket(
+              'ws://localhost:4000/socket/websocket',
+              channelFactory: (uri) {
+                connectCount++;
+                return FakeWebSocketChannel();
+              },
+            );
 
-          unawaited(socket.connect());
-          async.flushMicrotasks();
-          expect(connectCount, 1);
+            unawaited(socket.connect());
+            async.flushMicrotasks();
+            expect(connectCount, 1);
 
-          // First heartbeat at 30s — no reply sent
-          async
-            ..elapse(const Duration(seconds: 30))
-            ..elapse(const Duration(seconds: 30))
-            ..flushMicrotasks()
-            ..elapse(const Duration(seconds: 1))
-            ..flushMicrotasks();
-          expect(connectCount, 2);
+            // First heartbeat at 30s — no reply sent
+            async
+              ..elapse(const Duration(seconds: 30))
+              ..elapse(const Duration(seconds: 30))
+              ..flushMicrotasks()
+              ..elapse(const Duration(seconds: 1))
+              ..flushMicrotasks();
+            expect(connectCount, 2);
 
-          unawaited(socket.disconnect());
-          async.flushMicrotasks();
-        });
-      });
+            unawaited(socket.disconnect());
+            async.flushMicrotasks();
+          });
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
     // Bug 2: rejoin() had no timeout — channel could hang in joining forever
     // -------------------------------------------------------------------------
     group('Bug 2: rejoin() has a timeout', () {
-      test('rejoin that never gets a reply transitions to errored after 10s',
-          () {
-        fakeAsync((async) {
-          final setup = TestSetup()..init();
-          unawaited(setup.connect());
-          async.flushMicrotasks();
+      test(
+        'rejoin that never gets a reply transitions to errored after 10s',
+        () {
+          fakeAsync((async) {
+            final setup = TestSetup()..init();
+            unawaited(setup.connect());
+            async.flushMicrotasks();
 
-          final ch = setup.socket.channel('room:lobby');
-          // Set up _joinPayload by calling join then simulating join success
-          final joinFuture = ch.join();
-          async.flushMicrotasks();
+            final ch = setup.socket.channel('room:lobby');
+            // Set up _joinPayload by calling join then simulating join success
+            final joinFuture = ch.join();
+            async.flushMicrotasks();
 
-          final joinRef = setup.lastRef();
-          setup.replyJoinOk(joinRef, 'room:lobby');
-          async.flushMicrotasks();
+            final joinRef = setup.lastRef();
+            setup.replyJoinOk(joinRef, 'room:lobby');
+            async.flushMicrotasks();
 
-          expect(ch.state, PhoenixChannelState.joined);
-          joinFuture.ignore();
+            expect(ch.state, PhoenixChannelState.joined);
+            joinFuture.ignore();
 
-          // Simulate disconnect + rejoin
-          ch.onSocketDisconnect();
-          expect(ch.state, PhoenixChannelState.errored);
+            // Simulate disconnect + rejoin
+            ch.onSocketDisconnect();
+            expect(ch.state, PhoenixChannelState.errored);
 
-          ch.rejoin();
-          async.flushMicrotasks();
-          expect(ch.state, PhoenixChannelState.joining);
+            ch.rejoin();
+            async.flushMicrotasks();
+            expect(ch.state, PhoenixChannelState.joining);
 
-          // Server never replies — timeout should fire
-          async
-            ..elapse(const Duration(seconds: 11))
-            ..flushMicrotasks();
-          expect(ch.state, PhoenixChannelState.errored);
+            // Server never replies — timeout should fire
+            async
+              ..elapse(const Duration(seconds: 11))
+              ..flushMicrotasks();
+            expect(ch.state, PhoenixChannelState.errored);
 
-          unawaited(setup.socket.disconnect());
-          async.flushMicrotasks();
-        });
-      });
+            unawaited(setup.socket.disconnect());
+            async.flushMicrotasks();
+          });
+        },
+      );
 
       test('push buffer does not grow unboundedly during timed-out rejoin', () {
         fakeAsync((async) {
@@ -184,8 +196,12 @@ void main() {
           async.flushMicrotasks();
 
           // Buffer pushes during the rejoin joining state
-          unawaited(ch.push('msg', {'n': 1}).catchError((_) => <String, dynamic>{}));
-          unawaited(ch.push('msg', {'n': 2}).catchError((_) => <String, dynamic>{}));
+          unawaited(
+            ch.push('msg', {'n': 1}).catchError((_) => <String, dynamic>{}),
+          );
+          unawaited(
+            ch.push('msg', {'n': 2}).catchError((_) => <String, dynamic>{}),
+          );
 
           // Timeout fires
           async
@@ -202,99 +218,119 @@ void main() {
     // -------------------------------------------------------------------------
     // Bug 3: phx_close / phx_error during join left _joinCompleter unresolved
     // -------------------------------------------------------------------------
-    group('Bug 3: phx_close / phx_error complete the join future immediately',
-        () {
-      test('phx_close during join fails join future with PhoenixException',
+    group(
+      'Bug 3: phx_close / phx_error complete the join future immediately',
+      () {
+        test(
+          'phx_close during join fails join future with PhoenixException',
           () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
+            final setup = TestSetup()..init();
+            await setup.connect();
 
-        final ch = setup.socket.channel('room:lobby');
-        Object? joinError;
-        final joinFuture = ch.join().catchError((Object e) {
-          joinError = e;
-          return <String, dynamic>{};
-        });
-        await Future.microtask(() {});
+            final ch = setup.socket.channel('room:lobby');
+            Object? joinError;
+            final joinFuture = ch.join().catchError((Object e) {
+              joinError = e;
+              return <String, dynamic>{};
+            });
+            await Future.microtask(() {});
 
-        // Server sends phx_close before join reply
-        setup.sendToClient([null, null, 'room:lobby', 'phx_close', <String, dynamic>{}]);
-        await Future.microtask(() {});
-        await joinFuture;
+            // Server sends phx_close before join reply
+            setup.sendToClient([
+              null,
+              null,
+              'room:lobby',
+              'phx_close',
+              <String, dynamic>{},
+            ]);
+            await Future.microtask(() {});
+            await joinFuture;
 
-        // Join future must have failed immediately, not after 10s timeout
-        expect(joinError, isA<PhoenixException>());
-        expect(ch.state, PhoenixChannelState.closed);
+            // Join future must have failed immediately, not after 10s timeout
+            expect(joinError, isA<PhoenixException>());
+            expect(ch.state, PhoenixChannelState.closed);
 
-        await setup.socket.disconnect();
-      });
+            await setup.socket.disconnect();
+          },
+        );
 
-      test('phx_error during join fails join future with PhoenixException',
+        test(
+          'phx_error during join fails join future with PhoenixException',
           () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
+            final setup = TestSetup()..init();
+            await setup.connect();
 
-        final ch = setup.socket.channel('room:lobby');
-        Object? joinError;
-        final joinFuture = ch.join().catchError((Object e) {
-          joinError = e;
-          return <String, dynamic>{};
-        });
-        await Future.microtask(() {});
+            final ch = setup.socket.channel('room:lobby');
+            Object? joinError;
+            final joinFuture = ch.join().catchError((Object e) {
+              joinError = e;
+              return <String, dynamic>{};
+            });
+            await Future.microtask(() {});
 
-        setup.sendToClient([null, null, 'room:lobby', 'phx_error', <String, dynamic>{}]);
-        await Future.microtask(() {});
-        await joinFuture;
+            setup.sendToClient([
+              null,
+              null,
+              'room:lobby',
+              'phx_error',
+              <String, dynamic>{},
+            ]);
+            await Future.microtask(() {});
+            await joinFuture;
 
-        expect(joinError, isA<PhoenixException>());
-        expect(ch.state, PhoenixChannelState.errored);
+            expect(joinError, isA<PhoenixException>());
+            expect(ch.state, PhoenixChannelState.errored);
 
-        await setup.socket.disconnect();
-      });
-    });
+            await setup.socket.disconnect();
+          },
+        );
+      },
+    );
 
     // -------------------------------------------------------------------------
     // Bug 4: leave() during joining left _joinCompleter unresolved (10s hang)
     // -------------------------------------------------------------------------
-    group('Bug 4: leave() during join resolves the join future immediately',
-        () {
-      test('calling leave() while joining fails the join future', () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
+    group(
+      'Bug 4: leave() during join resolves the join future immediately',
+      () {
+        test('calling leave() while joining fails the join future', () async {
+          final setup = TestSetup()..init();
+          await setup.connect();
 
-        final ch = setup.socket.channel('room:lobby');
-        Object? joinError;
-        final joinFuture = ch.join().catchError((Object e) {
-          joinError = e;
-          return <String, dynamic>{};
+          final ch = setup.socket.channel('room:lobby');
+          Object? joinError;
+          final joinFuture = ch.join().catchError((Object e) {
+            joinError = e;
+            return <String, dynamic>{};
+          });
+          await Future.microtask(() {});
+
+          expect(ch.state, PhoenixChannelState.joining);
+
+          // Leave while still joining — join future should fail immediately
+          final leaveFuture = ch.leave();
+          await Future.microtask(() {});
+
+          // Reply to the leave (best-effort)
+          final leaveRef = setup.lastRef();
+          setup.sendToClient([
+            setup.lastJoinRef(),
+            leaveRef,
+            'room:lobby',
+            'phx_reply',
+            {'status': 'ok', 'response': <String, dynamic>{}},
+          ]);
+          await Future.microtask(() {});
+          await leaveFuture;
+          await joinFuture;
+
+          expect(joinError, isA<PhoenixException>());
+          expect(ch.state, PhoenixChannelState.closed);
+
+          await setup.socket.disconnect();
         });
-        await Future.microtask(() {});
-
-        expect(ch.state, PhoenixChannelState.joining);
-
-        // Leave while still joining — join future should fail immediately
-        final leaveFuture = ch.leave();
-        await Future.microtask(() {});
-
-        // Reply to the leave (best-effort)
-        final leaveRef = setup.lastRef();
-        setup.sendToClient([
-          setup.lastJoinRef(),
-          leaveRef,
-          'room:lobby',
-          'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}
-        ]);
-        await Future.microtask(() {});
-        await leaveFuture;
-        await joinFuture;
-
-        expect(joinError, isA<PhoenixException>());
-        expect(ch.state, PhoenixChannelState.closed);
-
-        await setup.socket.disconnect();
-      });
-    });
+      },
+    );
 
     // -------------------------------------------------------------------------
     // Bug 5: rejoin() .then block was redundant — _handleReply already does it.
@@ -315,7 +351,9 @@ void main() {
 
         // Buffer a push during rejoining
         Map<String, dynamic>? pushResult;
-        unawaited(ch.push('new_msg', {'body': 'once'}).then((r) => pushResult = r));
+        unawaited(
+          ch.push('new_msg', {'body': 'once'}).then((r) => pushResult = r),
+        );
         await Future.microtask(() {});
 
         // Reply to rejoin
@@ -325,12 +363,10 @@ void main() {
         await Future.microtask(() {});
 
         // Buffered push should have been sent exactly once
-        final sentAfterJoin = setup.sentMessages
-            .where((m) {
-              final decoded = jsonDecode(m as String) as List;
-              return decoded[3] == 'new_msg';
-            })
-            .length;
+        final sentAfterJoin = setup.sentMessages.where((m) {
+          final decoded = jsonDecode(m as String) as List;
+          return decoded[3] == 'new_msg';
+        }).length;
         expect(sentAfterJoin, 1);
 
         // Reply to the push
@@ -340,7 +376,10 @@ void main() {
           pushRef,
           'room:lobby',
           'phx_reply',
-          {'status': 'ok', 'response': {'ok': true}}
+          {
+            'status': 'ok',
+            'response': {'ok': true},
+          },
         ]);
         // Several microtask hops: _handleReply → completer.complete →
         // timeout future resolves → .then(buffered.completer.complete) →
@@ -361,8 +400,7 @@ void main() {
     // causing spurious reconnect after disconnect+reconnect cycle.
     // -------------------------------------------------------------------------
     group('Bug 6: stale heartbeat ref cleared on disconnect', () {
-      test(
-          'disconnect clears pending heartbeat ref so reconnect does not '
+      test('disconnect clears pending heartbeat ref so reconnect does not '
           'immediately re-disconnect at next heartbeat tick', () {
         fakeAsync((async) {
           StreamChannel<dynamic>? latestServer;
@@ -413,13 +451,15 @@ void main() {
           if (newSentMsgs.isNotEmpty) {
             final hb = jsonDecode(newSentMsgs.last as String) as List;
             if (hb[3] == 'heartbeat') {
-              latestServer!.sink.add(jsonEncode([
-                null,
-                hb[1],
-                'phoenix',
-                'phx_reply',
-                {'status': 'ok', 'response': <String, dynamic>{}}
-              ]));
+              latestServer!.sink.add(
+                jsonEncode([
+                  null,
+                  hb[1],
+                  'phoenix',
+                  'phx_reply',
+                  {'status': 'ok', 'response': <String, dynamic>{}},
+                ]),
+              );
               async.flushMicrotasks();
             }
           }
@@ -442,41 +482,44 @@ void main() {
     // -------------------------------------------------------------------------
     group('join timeout: late reply does not resurrect the channel', () {
       test(
-          'late phx_reply after join timeout is ignored (channel stays errored)',
-          () {
-        fakeAsync((async) {
-          final setup = TestSetup()..init();
-          unawaited(setup.connect());
-          async.flushMicrotasks();
+        'late phx_reply after join timeout is ignored (channel stays errored)',
+        () {
+          fakeAsync((async) {
+            final setup = TestSetup()..init();
+            unawaited(setup.connect());
+            async.flushMicrotasks();
 
-          final ch = setup.socket.channel('room:lobby');
-          Object? joinError;
-          unawaited(ch.join().catchError((Object e) {
-            joinError = e;
-            return <String, dynamic>{};
-          }));
-          async.flushMicrotasks();
+            final ch = setup.socket.channel('room:lobby');
+            Object? joinError;
+            unawaited(
+              ch.join().catchError((Object e) {
+                joinError = e;
+                return <String, dynamic>{};
+              }),
+            );
+            async.flushMicrotasks();
 
-          final joinRef = setup.lastRef();
+            final joinRef = setup.lastRef();
 
-          // Timeout fires
-          async
-            ..elapse(const Duration(seconds: 11))
-            ..flushMicrotasks();
-          expect(ch.state, PhoenixChannelState.errored);
-          expect(joinError, isA<TimeoutException>());
+            // Timeout fires
+            async
+              ..elapse(const Duration(seconds: 11))
+              ..flushMicrotasks();
+            expect(ch.state, PhoenixChannelState.errored);
+            expect(joinError, isA<TimeoutException>());
 
-          // Server sends a late join reply
-          setup.replyJoinOk(joinRef, 'room:lobby');
-          async.flushMicrotasks();
+            // Server sends a late join reply
+            setup.replyJoinOk(joinRef, 'room:lobby');
+            async.flushMicrotasks();
 
-          // Channel must remain errored — late reply should be ignored
-          expect(ch.state, PhoenixChannelState.errored);
+            // Channel must remain errored — late reply should be ignored
+            expect(ch.state, PhoenixChannelState.errored);
 
-          unawaited(setup.socket.disconnect());
-          async.flushMicrotasks();
-        });
-      });
+            unawaited(setup.socket.disconnect());
+            async.flushMicrotasks();
+          });
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -518,7 +561,8 @@ void main() {
 
         // Payload is null instead of a map
         setup.serverChannel.sink.add(
-            jsonEncode([null, null, 'room:lobby', 'new_msg', null]));
+          jsonEncode([null, null, 'room:lobby', 'new_msg', null]),
+        );
         await Future.microtask(() {});
 
         expect(setup.socket.state, PhoenixSocketState.connected);
@@ -531,8 +575,7 @@ void main() {
     // Bug: push in errored state should be buffered, not thrown
     // -------------------------------------------------------------------------
     group('push during errored state is buffered', () {
-      test(
-          'push while errored (between disconnect and rejoin) is buffered '
+      test('push while errored (between disconnect and rejoin) is buffered '
           'and delivered after rejoin', () async {
         final setup = TestSetup()..init();
         await setup.connect();
@@ -544,7 +587,9 @@ void main() {
 
         // Push while errored — should buffer, not throw
         Map<String, dynamic>? pushResult;
-        unawaited(ch.push('new_msg', {'body': 'buffered'}).then((r) => pushResult = r));
+        unawaited(
+          ch.push('new_msg', {'body': 'buffered'}).then((r) => pushResult = r),
+        );
         await Future.microtask(() {});
 
         // Now rejoin
@@ -564,7 +609,10 @@ void main() {
           pushRef,
           'room:lobby',
           'phx_reply',
-          {'status': 'ok', 'response': {'delivered': true}}
+          {
+            'status': 'ok',
+            'response': {'delivered': true},
+          },
         ]);
         // Several microtask hops to propagate through the completer chain
         for (var i = 0; i < 6; i++) {
@@ -609,8 +657,7 @@ void main() {
         });
       });
 
-      test('connect() while in reconnecting state does not create extra WS',
-          () {
+      test('connect() while in reconnecting state does not create extra WS', () {
         fakeAsync((async) {
           var connectCount = 0;
 

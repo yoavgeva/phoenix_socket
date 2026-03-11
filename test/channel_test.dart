@@ -45,54 +45,70 @@ class TestSetup {
     return msg[0] as String;
   }
 
-  void replyJoinOk(String ref, String topic,
-      {Map<String, dynamic> response = const {}}) {
+  void replyJoinOk(
+    String ref,
+    String topic, {
+    Map<String, dynamic> response = const {},
+  }) {
     sendToClient([
       ref,
       ref,
       topic,
       'phx_reply',
-      {'status': 'ok', 'response': response}
+      {'status': 'ok', 'response': response},
     ]);
   }
 
-  void replyJoinError(String ref, String topic,
-      {Map<String, dynamic> response = const {}}) {
+  void replyJoinError(
+    String ref,
+    String topic, {
+    Map<String, dynamic> response = const {},
+  }) {
     sendToClient([
       ref,
       ref,
       topic,
       'phx_reply',
-      {'status': 'error', 'response': response}
+      {'status': 'error', 'response': response},
     ]);
   }
 
-  void replyPushOk(String joinRef, String ref, String topic,
-      {Map<String, dynamic> response = const {}}) {
+  void replyPushOk(
+    String joinRef,
+    String ref,
+    String topic, {
+    Map<String, dynamic> response = const {},
+  }) {
     sendToClient([
       joinRef,
       ref,
       topic,
       'phx_reply',
-      {'status': 'ok', 'response': response}
+      {'status': 'ok', 'response': response},
     ]);
   }
 
-  void replyPushError(String joinRef, String ref, String topic,
-      {Map<String, dynamic> response = const {}}) {
+  void replyPushError(
+    String joinRef,
+    String ref,
+    String topic, {
+    Map<String, dynamic> response = const {},
+  }) {
     sendToClient([
       joinRef,
       ref,
       topic,
       'phx_reply',
-      {'status': 'error', 'response': response}
+      {'status': 'error', 'response': response},
     ]);
   }
 }
 
 /// Joins a channel and returns it (in joined state).
-Future<PhoenixChannel> joinedChannel(TestSetup setup,
-    {String topic = 'room:lobby'}) async {
+Future<PhoenixChannel> joinedChannel(
+  TestSetup setup, {
+  String topic = 'room:lobby',
+}) async {
   final ch = setup.socket.channel(topic);
   final joinFuture = ch.join();
   await Future.microtask(() {});
@@ -106,28 +122,30 @@ Future<PhoenixChannel> joinedChannel(TestSetup setup,
 void main() {
   group('PhoenixChannel', () {
     group('join', () {
-      test('join ok: state joining → joined, future resolves with response',
-          () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
+      test(
+        'join ok: state joining → joined, future resolves with response',
+        () async {
+          final setup = TestSetup()..init();
+          await setup.connect();
 
-        final ch = setup.socket.channel('room:lobby');
-        expect(ch.state, PhoenixChannelState.closed);
+          final ch = setup.socket.channel('room:lobby');
+          expect(ch.state, PhoenixChannelState.closed);
 
-        final joinFuture = ch.join();
-        await Future.microtask(() {});
-        expect(ch.state, PhoenixChannelState.joining);
+          final joinFuture = ch.join();
+          await Future.microtask(() {});
+          expect(ch.state, PhoenixChannelState.joining);
 
-        final ref = setup.lastRef();
-        setup.replyJoinOk(ref, 'room:lobby', response: {'user_count': 5});
-        await Future.microtask(() {});
+          final ref = setup.lastRef();
+          setup.replyJoinOk(ref, 'room:lobby', response: {'user_count': 5});
+          await Future.microtask(() {});
 
-        final response = await joinFuture;
-        expect(ch.state, PhoenixChannelState.joined);
-        expect(response['user_count'], 5);
+          final response = await joinFuture;
+          expect(ch.state, PhoenixChannelState.joined);
+          expect(response['user_count'], 5);
 
-        await setup.socket.disconnect();
-      });
+          await setup.socket.disconnect();
+        },
+      );
 
       test('join error: throws PhoenixException, state errored', () async {
         final setup = TestSetup()..init();
@@ -142,8 +160,11 @@ void main() {
         await Future.microtask(() {});
 
         final ref = setup.lastRef();
-        setup.replyJoinError(ref, 'room:lobby',
-            response: {'reason': 'unauthorized'});
+        setup.replyJoinError(
+          ref,
+          'room:lobby',
+          response: {'reason': 'unauthorized'},
+        );
         await Future.microtask(() {});
         await joinFuture;
 
@@ -161,10 +182,12 @@ void main() {
 
           final ch = setup.socket.channel('room:lobby');
           Object? error;
-          unawaited(ch.join().catchError((Object e) {
-            error = e;
-            return <String, dynamic>{};
-          }));
+          unawaited(
+            ch.join().catchError((Object e) {
+              error = e;
+              return <String, dynamic>{};
+            }),
+          );
           async
             ..flushMicrotasks()
             ..elapse(const Duration(seconds: 11))
@@ -184,34 +207,41 @@ void main() {
         final ch = setup.socket.channel('room:lobby');
         // Suppress firstJoin error before disconnect() fires onSocketDisconnect
         // synchronously (which errors the join completer).
-        final firstJoin = ch.join()
-          ..ignore();
+        final firstJoin = ch.join()..ignore();
         await expectLater(ch.join(), throwsStateError);
 
         await setup.socket.disconnect();
       });
 
-      test('phx_close before join reply: state closed, join future fails',
-          () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
+      test(
+        'phx_close before join reply: state closed, join future fails',
+        () async {
+          final setup = TestSetup()..init();
+          await setup.connect();
 
-        final ch = setup.socket.channel('room:lobby');
-        Object? joinError;
-        final joinFuture = ch.join().catchError((Object e) {
-          joinError = e;
-          return <String, dynamic>{};
-        });
-        await Future.microtask(() {});
+          final ch = setup.socket.channel('room:lobby');
+          Object? joinError;
+          final joinFuture = ch.join().catchError((Object e) {
+            joinError = e;
+            return <String, dynamic>{};
+          });
+          await Future.microtask(() {});
 
-        setup.sendToClient([null, null, 'room:lobby', 'phx_close', <String, dynamic>{}]);
-        await Future.microtask(() {});
-        await joinFuture;
+          setup.sendToClient([
+            null,
+            null,
+            'room:lobby',
+            'phx_close',
+            <String, dynamic>{},
+          ]);
+          await Future.microtask(() {});
+          await joinFuture;
 
-        expect(ch.state, PhoenixChannelState.closed);
-        expect(joinError, isA<PhoenixException>());
-        await setup.socket.disconnect();
-      });
+          expect(ch.state, PhoenixChannelState.closed);
+          expect(joinError, isA<PhoenixException>());
+          await setup.socket.disconnect();
+        },
+      );
 
       test('phx_error event: state errored, join future fails', () async {
         final setup = TestSetup()..init();
@@ -225,7 +255,13 @@ void main() {
         });
         await Future.microtask(() {});
 
-        setup.sendToClient([null, null, 'room:lobby', 'phx_error', <String, dynamic>{}]);
+        setup.sendToClient([
+          null,
+          null,
+          'room:lobby',
+          'phx_error',
+          <String, dynamic>{},
+        ]);
         await Future.microtask(() {});
         await joinFuture;
 
@@ -262,16 +298,21 @@ void main() {
         final joinRef = setup.lastJoinRef();
 
         Object? caughtError;
-        final pushFuture =
-            ch.push('new_msg', {'body': 'hello'}).catchError((Object e) {
+        final pushFuture = ch.push('new_msg', {'body': 'hello'}).catchError((
+          Object e,
+        ) {
           caughtError = e;
           return <String, dynamic>{};
         });
         await Future.microtask(() {});
 
         final pushRef = setup.lastRef();
-        setup.replyPushError(joinRef, pushRef, 'room:lobby',
-            response: {'reason': 'forbidden'});
+        setup.replyPushError(
+          joinRef,
+          pushRef,
+          'room:lobby',
+          response: {'reason': 'forbidden'},
+        );
         await Future.microtask(() {});
         await pushFuture;
 
@@ -295,10 +336,12 @@ void main() {
           async.flushMicrotasks();
 
           Object? error;
-          unawaited(ch.push('new_msg', {'body': 'hi'}).catchError((Object e) {
-            error = e;
-            return <String, dynamic>{};
-          }));
+          unawaited(
+            ch.push('new_msg', {'body': 'hi'}).catchError((Object e) {
+              error = e;
+              return <String, dynamic>{};
+            }),
+          );
           async
             ..flushMicrotasks()
             ..elapse(const Duration(seconds: 11))
@@ -347,8 +390,12 @@ void main() {
         // Buffered push should now be sent
         await Future.microtask(() {});
         final pushRef = setup.lastRef();
-        setup.replyPushOk(joinRef, pushRef, 'room:lobby',
-            response: {'sent': true});
+        setup.replyPushOk(
+          joinRef,
+          pushRef,
+          'room:lobby',
+          response: {'sent': true},
+        );
         await Future.microtask(() {});
 
         final response = await pushFuture;
@@ -371,7 +418,7 @@ void main() {
           leaveRef,
           'room:lobby',
           'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}
+          {'status': 'ok', 'response': <String, dynamic>{}},
         ]);
         await Future.microtask(() {});
         await leaveFuture;
@@ -398,7 +445,7 @@ void main() {
           null,
           'room:lobby',
           'new_msg',
-          {'body': 'hi'}
+          {'body': 'hi'},
         ]);
         await Future.microtask(() {});
         await Future.microtask(() {});
@@ -424,7 +471,7 @@ void main() {
           '99',
           'room:lobby',
           'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}
+          {'status': 'ok', 'response': <String, dynamic>{}},
         ]);
         await Future.microtask(() {});
         await Future.microtask(() {});
@@ -434,25 +481,33 @@ void main() {
         await setup.socket.disconnect();
       });
 
-      test('phx_join/phx_leave/phx_close NOT emitted on messages stream',
-          () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
-        final ch = await joinedChannel(setup);
+      test(
+        'phx_join/phx_leave/phx_close NOT emitted on messages stream',
+        () async {
+          final setup = TestSetup()..init();
+          await setup.connect();
+          final ch = await joinedChannel(setup);
 
-        final received = <PhoenixMessage>[];
-        ch.messages.listen(received.add);
+          final received = <PhoenixMessage>[];
+          ch.messages.listen(received.add);
 
-        for (final evt in ['phx_join', 'phx_leave', 'phx_close']) {
-          setup.sendToClient([null, null, 'room:lobby', evt, <String, dynamic>{}]);
-        }
-        await Future.microtask(() {});
-        await Future.microtask(() {});
+          for (final evt in ['phx_join', 'phx_leave', 'phx_close']) {
+            setup.sendToClient([
+              null,
+              null,
+              'room:lobby',
+              evt,
+              <String, dynamic>{},
+            ]);
+          }
+          await Future.microtask(() {});
+          await Future.microtask(() {});
 
-        expect(received, isEmpty);
+          expect(received, isEmpty);
 
-        await setup.socket.disconnect();
-      });
+          await setup.socket.disconnect();
+        },
+      );
 
       test('messages with stale joinRef are dropped silently', () async {
         final setup = TestSetup()..init();
@@ -467,7 +522,7 @@ void main() {
           null,
           'room:lobby',
           'new_msg',
-          {'body': 'stale'}
+          {'body': 'stale'},
         ]);
         await Future.microtask(() {});
         await Future.microtask(() {});
@@ -493,7 +548,7 @@ void main() {
           null,
           'room:lobby',
           'new_msg',
-          {'body': 'broadcast'}
+          {'body': 'broadcast'},
         ]);
         await Future.microtask(() {});
         await Future.microtask(() {});
@@ -524,7 +579,7 @@ void main() {
           leaveRef,
           'room:lobby',
           'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}
+          {'status': 'ok', 'response': <String, dynamic>{}},
         ]);
         await Future.microtask(() {});
         await leaveFuture;
@@ -534,24 +589,28 @@ void main() {
         await setup.socket.disconnect();
       });
 
-      test('pending push Completers error-completed on socket disconnect',
-          () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
-        final ch = await joinedChannel(setup);
+      test(
+        'pending push Completers error-completed on socket disconnect',
+        () async {
+          final setup = TestSetup()..init();
+          await setup.connect();
+          final ch = await joinedChannel(setup);
 
-        Object? pushError;
-        unawaited(ch.push('new_msg', {'body': 'hi'}).catchError((Object e) {
-          pushError = e;
-          return <String, dynamic>{};
-        }));
-        await Future.microtask(() {});
+          Object? pushError;
+          unawaited(
+            ch.push('new_msg', {'body': 'hi'}).catchError((Object e) {
+              pushError = e;
+              return <String, dynamic>{};
+            }),
+          );
+          await Future.microtask(() {});
 
-        await setup.socket.disconnect();
-        await Future.microtask(() {});
+          await setup.socket.disconnect();
+          await Future.microtask(() {});
 
-        expect(pushError, isA<PhoenixException>());
-      });
+          expect(pushError, isA<PhoenixException>());
+        },
+      );
     });
 
     group('rejoin', () {
@@ -579,19 +638,21 @@ void main() {
         await setup.socket.disconnect();
       });
 
-      test('channel transitions to errored state when joined and disconnected',
-          () async {
-        final setup = TestSetup()..init();
-        await setup.connect();
+      test(
+        'channel transitions to errored state when joined and disconnected',
+        () async {
+          final setup = TestSetup()..init();
+          await setup.connect();
 
-        final ch = await joinedChannel(setup);
-        expect(ch.state, PhoenixChannelState.joined);
+          final ch = await joinedChannel(setup);
+          expect(ch.state, PhoenixChannelState.joined);
 
-        ch.onSocketDisconnect();
-        expect(ch.state, PhoenixChannelState.errored);
+          ch.onSocketDisconnect();
+          expect(ch.state, PhoenixChannelState.errored);
 
-        await setup.socket.disconnect();
-      });
+          await setup.socket.disconnect();
+        },
+      );
 
       test('rejoin failure sets state back to errored', () async {
         final setup = TestSetup()..init();

@@ -66,14 +66,34 @@ class T {
   String topicOf(dynamic raw) =>
       (jsonDecode(raw as String) as List)[2] as String;
 
-  void replyOk(String jr, String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
-    toClient([jr, r, t, 'phx_reply', {'status': 'ok', 'response': resp}]);
+  void replyOk(
+    String jr,
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    toClient([
+      jr,
+      r,
+      t,
+      'phx_reply',
+      {'status': 'ok', 'response': resp},
+    ]);
   }
 
-  void replyErr(String jr, String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
-    toClient([jr, r, t, 'phx_reply', {'status': 'error', 'response': resp}]);
+  void replyErr(
+    String jr,
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    toClient([
+      jr,
+      r,
+      t,
+      'phx_reply',
+      {'status': 'error', 'response': resp},
+    ]);
   }
 
   void replyJoinOk(String r, String t, [Map<String, dynamic> resp = const {}]) {
@@ -104,37 +124,46 @@ void main() {
   // Fixed: phx_error handler now calls _clearPendingRefs().
   // =========================================================================
   group('Bug A: phx_error clears in-flight push completers', () {
-    test('1. push in-flight when phx_error arrives — errors promptly', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '1. push in-flight when phx_error arrives — errors promptly',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:phxerr1');
-      final joinRef = t.jRef(t.sent.last);
+        final ch = await joinedChannel(t, 'room:phxerr1');
+        final joinRef = t.jRef(t.sent.last);
 
-      // Send a push — server never replies
-      Object? pushError;
-      var pushDone = false;
-      unawaited(ch.push('slow_event', {}).then(
-        (_) { pushDone = true; },
-        onError: (e) {
-          pushError = e;
-          pushDone = true;
-        },
-      ));
-      await flush(4);
+        // Send a push — server never replies
+        Object? pushError;
+        var pushDone = false;
+        unawaited(
+          ch
+              .push('slow_event', {})
+              .then(
+                (_) {
+                  pushDone = true;
+                },
+                onError: (e) {
+                  pushError = e;
+                  pushDone = true;
+                },
+              ),
+        );
+        await flush(4);
 
-      // Push is now in-flight (_pendingRefs has the completer)
-      expect(pushDone, isFalse);
+        // Push is now in-flight (_pendingRefs has the completer)
+        expect(pushDone, isFalse);
 
-      // Server sends phx_error — channel transitions to errored
-      t.toClient([joinRef, null, 'room:phxerr1', 'phx_error', {}]);
-      await flush(6);
+        // Server sends phx_error — channel transitions to errored
+        t.toClient([joinRef, null, 'room:phxerr1', 'phx_error', {}]);
+        await flush(6);
 
-      // Push must have been rejected immediately, not after 10s timeout
-      expect(pushDone, isTrue);
-      expect(pushError, isA<PhoenixException>());
-      expect(ch.state, PhoenixChannelState.errored);
-    });
+        // Push must have been rejected immediately, not after 10s timeout
+        expect(pushDone, isTrue);
+        expect(pushError, isA<PhoenixException>());
+        expect(ch.state, PhoenixChannelState.errored);
+      },
+    );
 
     test('2. multiple in-flight pushes cleared on phx_error', () async {
       final t = T()..init();
@@ -145,10 +174,14 @@ void main() {
 
       final errors = <Object>[];
       for (var i = 0; i < 3; i++) {
-        unawaited(ch.push('event_$i', {}).then(
-          (_) {},
-          onError: errors.add,
-        ));
+        unawaited(
+          ch
+              .push('event_$i', {})
+              .then(
+                (_) {},
+                onError: errors.add,
+              ),
+        );
       }
       await flush(4);
 
@@ -180,71 +213,89 @@ void main() {
   // Fixed: leaving → errored on disconnect.
   // =========================================================================
   group('Bug B: leaving channel transitions to errored on socket disconnect', () {
-    test('4. socket drops while channel is leaving — channel not stuck in leaving', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '4. socket drops while channel is leaving — channel not stuck in leaving',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:leave_dc');
+        final ch = await joinedChannel(t, 'room:leave_dc');
 
-      // Start leave — server never replies (leave pending)
-      unawaited(ch.leave().then((_) {}, onError: (_) {}));
-      await flush(2);
+        // Start leave — server never replies (leave pending)
+        unawaited(ch.leave().then((_) {}, onError: (_) {}));
+        await flush(2);
 
-      expect(ch.state, PhoenixChannelState.leaving);
+        expect(ch.state, PhoenixChannelState.leaving);
 
-      // Socket drops while leave is in-flight
-      t.drop();
-      await flush(6);
+        // Socket drops while leave is in-flight
+        t.drop();
+        await flush(6);
 
-      // Channel must not be stuck in leaving.
-      // leave() catches the disconnect error and transitions to closed.
-      // (onSocketDisconnect sets errored, but leave() completes and sets closed)
-      expect(ch.state, isNot(PhoenixChannelState.leaving));
-    });
+        // Channel must not be stuck in leaving.
+        // leave() catches the disconnect error and transitions to closed.
+        // (onSocketDisconnect sets errored, but leave() completes and sets closed)
+        expect(ch.state, isNot(PhoenixChannelState.leaving));
+      },
+    );
 
-    test('5. leaving channel not stuck — leave future resolves (not hangs)', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '5. leaving channel not stuck — leave future resolves (not hangs)',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:leave_dc2');
+        final ch = await joinedChannel(t, 'room:leave_dc2');
 
-      var leaveDone = false;
-      unawaited(ch.leave().then((_) { leaveDone = true; }, onError: (_) { leaveDone = true; }));
-      await flush(2);
+        var leaveDone = false;
+        unawaited(
+          ch.leave().then(
+            (_) {
+              leaveDone = true;
+            },
+            onError: (_) {
+              leaveDone = true;
+            },
+          ),
+        );
+        await flush(2);
 
-      expect(ch.state, PhoenixChannelState.leaving);
+        expect(ch.state, PhoenixChannelState.leaving);
 
-      // Drop the socket — the leave pending ref should be cleared
-      t.drop();
-      await flush(6);
+        // Drop the socket — the leave pending ref should be cleared
+        t.drop();
+        await flush(6);
 
-      // Leave resolved (either ok or error) — not hanging
-      // The leave completer's ref was in _pendingRefs which gets cleared on disconnect
-      // After clearing, the leave() best-effort try/catch finishes
-      expect(leaveDone, isTrue);
-    });
+        // Leave resolved (either ok or error) — not hanging
+        // The leave completer's ref was in _pendingRefs which gets cleared on disconnect
+        // After clearing, the leave() best-effort try/catch finishes
+        expect(leaveDone, isTrue);
+      },
+    );
 
-    test('6. simultaneous leave+disconnect — socket goes disconnected cleanly', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '6. simultaneous leave+disconnect — socket goes disconnected cleanly',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:leave_dc3');
+        final ch = await joinedChannel(t, 'room:leave_dc3');
 
-      // Concurrent leave and socket drop
-      unawaited(ch.leave().then((_) {}, onError: (_) {}));
-      t.drop();
-      await flush();
+        // Concurrent leave and socket drop
+        unawaited(ch.leave().then((_) {}, onError: (_) {}));
+        t.drop();
+        await flush();
 
-      // Socket in reconnecting state, channel errored
-      expect(
-        t.socket.state,
-        anyOf(
-          PhoenixSocketState.reconnecting,
-          PhoenixSocketState.disconnected,
-        ),
-      );
-      expect(ch.state, isNot(PhoenixChannelState.leaving));
-    });
+        // Socket in reconnecting state, channel errored
+        expect(
+          t.socket.state,
+          anyOf(
+            PhoenixSocketState.reconnecting,
+            PhoenixSocketState.disconnected,
+          ),
+        );
+        expect(ch.state, isNot(PhoenixChannelState.leaving));
+      },
+    );
   });
 
   // =========================================================================
@@ -281,8 +332,11 @@ void main() {
           ..flushMicrotasks()
           ..flushMicrotasks();
         final joins = t.sent
-            .where((m) => t.evnt(m) == 'phx_join' &&
-                t.topicOf(m) == 'room:join_on_drop')
+            .where(
+              (m) =>
+                  t.evnt(m) == 'phx_join' &&
+                  t.topicOf(m) == 'room:join_on_drop',
+            )
             .toList();
         expect(joins.length, greaterThanOrEqualTo(2)); // original + rejoin
         expect(ch.state, PhoenixChannelState.joining);
@@ -355,64 +409,79 @@ void main() {
       expect(msg.event, 'custom_event');
     });
 
-    test('10. null payload message routed to channel messages stream', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '10. null payload message routed to channel messages stream',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:nullpayload');
-      final joinRef = t.jRef(t.sent.last);
+        final ch = await joinedChannel(t, 'room:nullpayload');
+        final joinRef = t.jRef(t.sent.last);
 
-      final received = <PhoenixMessage>[];
-      ch.messages.listen(received.add);
+        final received = <PhoenixMessage>[];
+        ch.messages.listen(received.add);
 
-      // Server sends message with null payload (raw JSON)
-      t.server.sink.add(
-        jsonEncode([joinRef, null, 'room:nullpayload', 'null_event', null]),
-      );
-      await flush(4);
+        // Server sends message with null payload (raw JSON)
+        t.server.sink.add(
+          jsonEncode([joinRef, null, 'room:nullpayload', 'null_event', null]),
+        );
+        await flush(4);
 
-      expect(received, hasLength(1));
-      expect(received.first.event, 'null_event');
-      expect(received.first.payload, isEmpty);
-    });
+        expect(received, hasLength(1));
+        expect(received.first.event, 'null_event');
+        expect(received.first.payload, isEmpty);
+      },
+    );
 
-    test('11. non-map payload (invalid) — silently dropped, no crash', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '11. non-map payload (invalid) — silently dropped, no crash',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:badpayload');
+        final ch = await joinedChannel(t, 'room:badpayload');
 
-      final received = <PhoenixMessage>[];
-      ch.messages.listen(received.add);
+        final received = <PhoenixMessage>[];
+        ch.messages.listen(received.add);
 
-      // Server sends message with array payload (invalid Phoenix V2 format)
-      t.server.sink.add(
-        jsonEncode([null, null, 'room:badpayload', 'bad_event', [1, 2, 3]]),
-      );
-      await flush(4);
+        // Server sends message with array payload (invalid Phoenix V2 format)
+        t.server.sink.add(
+          jsonEncode([
+            null,
+            null,
+            'room:badpayload',
+            'bad_event',
+            [1, 2, 3],
+          ]),
+        );
+        await flush(4);
 
-      // Must not crash — message silently dropped (wrong payload type)
-      expect(ch.state, PhoenixChannelState.joined);
-      // payload [1,2,3] is not a Map → fromJson throws → caught in _onMessage
-      expect(received, isEmpty);
-    });
+        // Must not crash — message silently dropped (wrong payload type)
+        expect(ch.state, PhoenixChannelState.joined);
+        // payload [1,2,3] is not a Map → fromJson throws → caught in _onMessage
+        expect(received, isEmpty);
+      },
+    );
 
-    test('12. binary (non-string) frame — silently dropped, no crash', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '12. binary (non-string) frame — silently dropped, no crash',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:binary');
+        final ch = await joinedChannel(t, 'room:binary');
 
-      // Inject a binary frame (Uint8List-like — we simulate with raw bytes)
-      // The socket's _onMessage does `data as String` — if data is not a
-      // String it throws TypeError which is caught and ignored.
-      t.server.sink.add([0x00, 0x01, 0x02]); // List<int>, not String
-      await flush(4);
+        // Inject a binary frame (Uint8List-like — we simulate with raw bytes)
+        // The socket's _onMessage does `data as String` — if data is not a
+        // String it throws TypeError which is caught and ignored.
+        t.server.sink.add([0x00, 0x01, 0x02]); // List<int>, not String
+        await flush(4);
 
-      // Socket must still be connected, channel still joined
-      expect(t.socket.state, PhoenixSocketState.connected);
-      expect(ch.state, PhoenixChannelState.joined);
-    });
+        // Socket must still be connected, channel still joined
+        expect(t.socket.state, PhoenixSocketState.connected);
+        expect(ch.state, PhoenixChannelState.joined);
+      },
+    );
   });
 
   // =========================================================================
@@ -448,7 +517,16 @@ void main() {
 
         // leave() on a closed channel is a no-op — resolves immediately.
         var leaveDone = false;
-        unawaited(ch.leave().then((_) { leaveDone = true; }, onError: (_) { leaveDone = true; }));
+        unawaited(
+          ch.leave().then(
+            (_) {
+              leaveDone = true;
+            },
+            onError: (_) {
+              leaveDone = true;
+            },
+          ),
+        );
         async.flushMicrotasks();
 
         expect(leaveDone, isTrue); // immediate — channel already closed
@@ -456,66 +534,84 @@ void main() {
       });
     });
 
-    test('14. socket.channel() after leave() returns same cached instance', () async {
-      // This documents the current behavior: channel() never evicts from cache.
-      // Users must be aware that after leave(), channel(topic) returns the same
-      // dead instance, and join() will throw StateError.
-      final t = T()..init();
-      await t.connect();
+    test(
+      '14. socket.channel() after leave() returns same cached instance',
+      () async {
+        // This documents the current behavior: channel() never evicts from cache.
+        // Users must be aware that after leave(), channel(topic) returns the same
+        // dead instance, and join() will throw StateError.
+        final t = T()..init();
+        await t.connect();
 
-      final ch1 = await joinedChannel(t, 'room:cached');
-      await ch1.leave();
+        final ch1 = await joinedChannel(t, 'room:cached');
+        await ch1.leave();
 
-      final ch2 = t.socket.channel('room:cached');
-      expect(identical(ch1, ch2), isTrue); // same object
-      expect(ch2.state, PhoenixChannelState.closed);
-    });
+        final ch2 = t.socket.channel('room:cached');
+        expect(identical(ch1, ch2), isTrue); // same object
+        expect(ch2.state, PhoenixChannelState.closed);
+      },
+    );
 
-    test('15. phx_error on live socket — channel errored, no auto-retry on same socket',
-        () async {
-      // Per-channel phx_error on a live socket transitions to errored.
-      // Auto-retry only happens when the SOCKET reconnects (via _rejoinChannels).
-      // There is no per-channel retry without a socket reconnect.
-      final t = T()..init();
-      await t.connect();
+    test(
+      '15. phx_error on live socket — channel errored, no auto-retry on same socket',
+      () async {
+        // Per-channel phx_error on a live socket transitions to errored.
+        // Auto-retry only happens when the SOCKET reconnects (via _rejoinChannels).
+        // There is no per-channel retry without a socket reconnect.
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:phxerr_live');
-      final joinRef = t.jRef(t.sent.last);
+        final ch = await joinedChannel(t, 'room:phxerr_live');
+        final joinRef = t.jRef(t.sent.last);
 
-      t.toClient([joinRef, null, 'room:phxerr_live', 'phx_error', {}]);
-      await flush(4);
+        t.toClient([joinRef, null, 'room:phxerr_live', 'phx_error', {}]);
+        await flush(4);
 
-      expect(ch.state, PhoenixChannelState.errored);
+        expect(ch.state, PhoenixChannelState.errored);
 
-      // No automatic rejoin on the same socket — this is documented behavior
-      await flush(4);
-      expect(ch.state, PhoenixChannelState.errored);
+        // No automatic rejoin on the same socket — this is documented behavior
+        await flush(4);
+        expect(ch.state, PhoenixChannelState.errored);
 
-      // Sending a push on an errored channel buffers it (not an error)
-      var pushDone = false;
-      unawaited(ch.push('buffered', {}).then((_) {}, onError: (_) { pushDone = true; }));
-      await flush(2);
-      // Push is buffered, not yet resolved
-      expect(pushDone, isFalse);
-    });
+        // Sending a push on an errored channel buffers it (not an error)
+        var pushDone = false;
+        unawaited(
+          ch
+              .push('buffered', {})
+              .then(
+                (_) {},
+                onError: (_) {
+                  pushDone = true;
+                },
+              ),
+        );
+        await flush(2);
+        // Push is buffered, not yet resolved
+        expect(pushDone, isFalse);
+      },
+    );
 
-    test('16. phx_close on one channel does not affect sibling channels', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '16. phx_close on one channel does not affect sibling channels',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final chA = await joinedChannel(t, 'room:sibling_a');
-      final chB = await joinedChannel(t, 'room:sibling_b');
-      final joinRefA = t.jRef(
-          t.sent.where((m) => t.topicOf(m) == 'room:sibling_a').last);
+        final chA = await joinedChannel(t, 'room:sibling_a');
+        final chB = await joinedChannel(t, 'room:sibling_b');
+        final joinRefA = t.jRef(
+          t.sent.where((m) => t.topicOf(m) == 'room:sibling_a').last,
+        );
 
-      // Server closes channel A
-      t.toClient([joinRefA, null, 'room:sibling_a', 'phx_close', {}]);
-      await flush(4);
+        // Server closes channel A
+        t.toClient([joinRefA, null, 'room:sibling_a', 'phx_close', {}]);
+        await flush(4);
 
-      expect(chA.state, PhoenixChannelState.closed);
-      // Channel B must be unaffected
-      expect(chB.state, PhoenixChannelState.joined);
-    });
+        expect(chA.state, PhoenixChannelState.closed);
+        // Channel B must be unaffected
+        expect(chB.state, PhoenixChannelState.joined);
+      },
+    );
 
     test('17. push reply arrives after channel left — no crash', () async {
       final t = T()..init();
@@ -528,7 +624,8 @@ void main() {
       unawaited(ch.push('late_event', {}).then((_) {}, onError: (_) {}));
       await flush(4);
       final pushRef = t.ref(
-          t.sent.where((m) => t.evnt(m) == 'late_event').last);
+        t.sent.where((m) => t.evnt(m) == 'late_event').last,
+      );
 
       // Leave the channel
       unawaited(ch.leave().then((_) {}, onError: (_) {}));
@@ -541,8 +638,13 @@ void main() {
       expect(ch.state, PhoenixChannelState.closed);
 
       // Now a late reply for the old push arrives — must not crash
-      t.toClient([joinRef, pushRef, 'room:orphan_reply', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      t.toClient([
+        joinRef,
+        pushRef,
+        'room:orphan_reply',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await flush(4);
 
       // No exception, socket still alive
@@ -563,31 +665,37 @@ void main() {
       expect(t.socket.state, PhoenixSocketState.connected);
     });
 
-    test('19. malformed JSON frame — no crash, socket stays connected', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '19. malformed JSON frame — no crash, socket stays connected',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      // Inject malformed JSON
-      t.server.sink.add('not valid json {{{');
-      await flush(4);
+        // Inject malformed JSON
+        t.server.sink.add('not valid json {{{');
+        await flush(4);
 
-      expect(t.socket.state, PhoenixSocketState.connected);
-    });
+        expect(t.socket.state, PhoenixSocketState.connected);
+      },
+    );
 
-    test('20. PhoenixMessage.fromJson round-trip with null joinRef and ref', () {
-      const original = PhoenixMessage(
-        joinRef: null,
-        ref: null,
-        topic: 'room:lobby',
-        event: 'broadcast',
-        payload: {'data': 'hello'},
-      );
-      final decoded = PhoenixMessage.fromJson(original.toJson());
-      expect(decoded.joinRef, isNull);
-      expect(decoded.ref, isNull);
-      expect(decoded.topic, 'room:lobby');
-      expect(decoded.event, 'broadcast');
-      expect(decoded.payload['data'], 'hello');
-    });
+    test(
+      '20. PhoenixMessage.fromJson round-trip with null joinRef and ref',
+      () {
+        const original = PhoenixMessage(
+          joinRef: null,
+          ref: null,
+          topic: 'room:lobby',
+          event: 'broadcast',
+          payload: {'data': 'hello'},
+        );
+        final decoded = PhoenixMessage.fromJson(original.toJson());
+        expect(decoded.joinRef, isNull);
+        expect(decoded.ref, isNull);
+        expect(decoded.topic, 'room:lobby');
+        expect(decoded.event, 'broadcast');
+        expect(decoded.payload['data'], 'hello');
+      },
+    );
   });
 }

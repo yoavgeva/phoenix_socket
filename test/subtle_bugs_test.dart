@@ -66,20 +66,40 @@ class T {
   String ref(dynamic raw) => (jsonDecode(raw as String) as List)[1] as String;
   String jRef(dynamic raw) => (jsonDecode(raw as String) as List)[0] as String;
   String evnt(dynamic raw) => (jsonDecode(raw as String) as List)[3] as String;
-  String topicOf(dynamic raw) => (jsonDecode(raw as String) as List)[2] as String;
+  String topicOf(dynamic raw) =>
+      (jsonDecode(raw as String) as List)[2] as String;
 
-  void replyOk(String jr, String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
-    toClient([jr, r, t, 'phx_reply', {'status': 'ok', 'response': resp}]);
+  void replyOk(
+    String jr,
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    toClient([
+      jr,
+      r,
+      t,
+      'phx_reply',
+      {'status': 'ok', 'response': resp},
+    ]);
   }
 
-  void replyErr(String jr, String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
-    toClient([jr, r, t, 'phx_reply', {'status': 'error', 'response': resp}]);
+  void replyErr(
+    String jr,
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    toClient([
+      jr,
+      r,
+      t,
+      'phx_reply',
+      {'status': 'error', 'response': resp},
+    ]);
   }
 
-  void replyJoinOk(String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
+  void replyJoinOk(String r, String t, [Map<String, dynamic> resp = const {}]) {
     replyOk(r, r, t, resp);
   }
 }
@@ -107,42 +127,49 @@ void main() {
   // Push queued before join reply → buffer flushed → push sent
   // =========================================================================
   group('pushBuffer flushed on first join (Phoenix.js #1295)', () {
-    test('1. push before join reply → sent immediately after join ok', () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '1. push before join reply → sent immediately after join ok',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = t.socket.channel('room:buf1295');
-      unawaited(ch.join());
-      await flush();
-      final joinRef = t.ref(t.sent.last);
+        final ch = t.socket.channel('room:buf1295');
+        unawaited(ch.join());
+        await flush();
+        final joinRef = t.ref(t.sent.last);
 
-      // Push BEFORE join reply arrives — must be buffered
-      var pushDone = false;
-      unawaited(ch.push('buffered_msg', {'x': 1}).then((_) { pushDone = true; }));
-      await flush();
+        // Push BEFORE join reply arrives — must be buffered
+        var pushDone = false;
+        unawaited(
+          ch.push('buffered_msg', {'x': 1}).then((_) {
+            pushDone = true;
+          }),
+        );
+        await flush();
 
-      // No push sent yet — still joining
-      final pushSentBeforeJoin = t.sent
-          .where((r) => t.evnt(r) == 'buffered_msg')
-          .toList();
-      expect(pushSentBeforeJoin, isEmpty);
+        // No push sent yet — still joining
+        final pushSentBeforeJoin = t.sent
+            .where((r) => t.evnt(r) == 'buffered_msg')
+            .toList();
+        expect(pushSentBeforeJoin, isEmpty);
 
-      // Join reply arrives → buffer flushed → push sent
-      t.replyJoinOk(joinRef, 'room:buf1295');
-      await flush(8);
+        // Join reply arrives → buffer flushed → push sent
+        t.replyJoinOk(joinRef, 'room:buf1295');
+        await flush(8);
 
-      final pushSentAfterJoin = t.sent
-          .where((r) => t.evnt(r) == 'buffered_msg')
-          .toList();
-      expect(pushSentAfterJoin, hasLength(1));
+        final pushSentAfterJoin = t.sent
+            .where((r) => t.evnt(r) == 'buffered_msg')
+            .toList();
+        expect(pushSentAfterJoin, hasLength(1));
 
-      // Reply to push
-      final pushRef = t.ref(pushSentAfterJoin.first);
-      final pJoinRef = t.jRef(pushSentAfterJoin.first);
-      t.replyOk(pJoinRef, pushRef, 'room:buf1295');
-      await flush();
-      expect(pushDone, isTrue);
-    });
+        // Reply to push
+        final pushRef = t.ref(pushSentAfterJoin.first);
+        final pJoinRef = t.jRef(pushSentAfterJoin.first);
+        t.replyOk(pJoinRef, pushRef, 'room:buf1295');
+        await flush();
+        expect(pushDone, isTrue);
+      },
+    );
 
     test('2. multiple buffered pushes all sent after join ok', () async {
       final t = T()..init();
@@ -157,7 +184,11 @@ void main() {
       final results = <int>[];
       for (var i = 0; i < 3; i++) {
         final idx = i;
-        unawaited(ch.push('msg_$i', {'i': i}).then((_) { results.add(idx); }));
+        unawaited(
+          ch.push('msg_$i', {'i': i}).then((_) {
+            results.add(idx);
+          }),
+        );
       }
       await flush();
 
@@ -272,7 +303,9 @@ void main() {
       final ch = t.socket.channel('room:dupjoin2');
       unawaited(ch.join().then((_) {}, onError: (_) {}));
       await flush();
-      unawaited(ch.join().then((_) {}, onError: (_) {})); // second — should no-op
+      unawaited(
+        ch.join().then((_) {}, onError: (_) {}),
+      ); // second — should no-op
       await flush();
 
       final joins = t.sent.where((r) => t.evnt(r) == 'phx_join').toList();
@@ -285,65 +318,70 @@ void main() {
   // ws#1103 — messages queued during downtime are sent on new connection
   // =========================================================================
   group('Message loss during reconnect window', () {
-    test('7. push sent while disconnected is dropped — no phantom delivery',
-        () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:loss');
-
-      // Disconnect (intentional — no reconnect)
-      await t.socket.disconnect();
-      await flush();
-
-      // Try to push while disconnected — should throw or be silently dropped
-      try {
-        await ch.push('lost_msg', {})
-            .timeout(const Duration(milliseconds: 100));
-      } catch (_) {
-        // Expected
-      }
-
-      // 'lost_msg' must NOT appear in sent (socket was not connected)
-      // Note: socket.send() is a no-op when disconnected, so push just hangs
-      // until timeout — verify no double delivery on reconnect
-      await t.connect();
-      await flush(4);
-      final lostMsgs = t.sent.where((r) => t.evnt(r) == 'lost_msg').toList();
-      expect(lostMsgs, isEmpty);
-    });
-
-    test('8. push sent just before crash is NOT silently delivered after reconnect',
-        () {
-      fakeAsync((async) {
+    test(
+      '7. push sent while disconnected is dropped — no phantom delivery',
+      () async {
         final t = T()..init();
-        unawaited(t.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        final ch = t.socket.channel('room:pre-crash');
-        unawaited(ch.join());
-        async.flushMicrotasks();
-        final jRef = t.ref(t.sent.last);
-        t.replyJoinOk(jRef, 'room:pre-crash');
-        async.flushMicrotasks();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:loss');
 
-        // Push just before crash — in-flight
-        unawaited(ch.push('pre_crash_msg', {}).then((_) {}, onError: (_) {}));
-        async.flushMicrotasks();
+        // Disconnect (intentional — no reconnect)
+        await t.socket.disconnect();
+        await flush();
 
-        // Crash
-        t.drop();
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 2))
-          ..flushMicrotasks();
-        final preCrash = t.sent
-            .where((r) => t.evnt(r) == 'pre_crash_msg')
-            .toList();
-        expect(preCrash, hasLength(1)); // sent exactly once, on original conn
-      });
-    });
+        // Try to push while disconnected — should throw or be silently dropped
+        try {
+          await ch
+              .push('lost_msg', {})
+              .timeout(const Duration(milliseconds: 100));
+        } catch (_) {
+          // Expected
+        }
+
+        // 'lost_msg' must NOT appear in sent (socket was not connected)
+        // Note: socket.send() is a no-op when disconnected, so push just hangs
+        // until timeout — verify no double delivery on reconnect
+        await t.connect();
+        await flush(4);
+        final lostMsgs = t.sent.where((r) => t.evnt(r) == 'lost_msg').toList();
+        expect(lostMsgs, isEmpty);
+      },
+    );
+
+    test(
+      '8. push sent just before crash is NOT silently delivered after reconnect',
+      () {
+        fakeAsync((async) {
+          final t = T()..init();
+          unawaited(t.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          final ch = t.socket.channel('room:pre-crash');
+          unawaited(ch.join());
+          async.flushMicrotasks();
+          final jRef = t.ref(t.sent.last);
+          t.replyJoinOk(jRef, 'room:pre-crash');
+          async.flushMicrotasks();
+
+          // Push just before crash — in-flight
+          unawaited(ch.push('pre_crash_msg', {}).then((_) {}, onError: (_) {}));
+          async.flushMicrotasks();
+
+          // Crash
+          t.drop();
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 2))
+            ..flushMicrotasks();
+          final preCrash = t.sent
+              .where((r) => t.evnt(r) == 'pre_crash_msg')
+              .toList();
+          expect(preCrash, hasLength(1)); // sent exactly once, on original conn
+        });
+      },
+    );
   });
 
   // =========================================================================
@@ -373,9 +411,7 @@ void main() {
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 2))
           ..flushMicrotasks();
-        final rejoinMsg = t.sent
-            .where((r) => t.evnt(r) == 'phx_join')
-            .last;
+        final rejoinMsg = t.sent.where((r) => t.evnt(r) == 'phx_join').last;
         async
           ..elapse(const Duration(seconds: 1))
           ..flushMicrotasks();
@@ -394,45 +430,77 @@ void main() {
   // Ably FAQ — listeners added multiple times = duplicate callbacks
   // =========================================================================
   group('Duplicate listener on reconnect', () {
-    test('10. adding same listener after reconnect does not double-fire', () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:listener');
+    test(
+      '10. adding same listener after reconnect does not double-fire',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:listener');
 
-      var callCount = 0;
-      // Add listener once
-      final sub = ch.messages.listen((_) { callCount++; });
+        var callCount = 0;
+        // Add listener once
+        final sub = ch.messages.listen((_) {
+          callCount++;
+        });
 
-      // Receive one broadcast
-      t.toClient([null, null, 'room:listener', 'event', {'x': 1}]);
-      await flush(4);
-      expect(callCount, 1);
+        // Receive one broadcast
+        t.toClient([
+          null,
+          null,
+          'room:listener',
+          'event',
+          {'x': 1},
+        ]);
+        await flush(4);
+        expect(callCount, 1);
 
-      // Cancel and re-add (simulates reconnect scenario)
-      await sub.cancel();
-      ch.messages.listen((_) { callCount++; });
+        // Cancel and re-add (simulates reconnect scenario)
+        await sub.cancel();
+        ch.messages.listen((_) {
+          callCount++;
+        });
 
-      // Second broadcast
-      t.toClient([null, null, 'room:listener', 'event', {'x': 2}]);
-      await flush(4);
-      expect(callCount, 2); // +1, not +2
-    });
+        // Second broadcast
+        t.toClient([
+          null,
+          null,
+          'room:listener',
+          'event',
+          {'x': 2},
+        ]);
+        await flush(4);
+        expect(callCount, 2); // +1, not +2
+      },
+    );
 
-    test('11. multiple listeners on same stream each get exactly one copy', () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:multilistener');
+    test(
+      '11. multiple listeners on same stream each get exactly one copy',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:multilistener');
 
-      var count1 = 0;
-      var count2 = 0;
-      ch
-        ..messages.listen((_) { count1++; })
-        ..messages.listen((_) { count2++; });
-      t.toClient([null, null, 'room:multilistener', 'tick', <String, dynamic>{}]);
-      await flush(4);
-      expect(count1, 1);
-      expect(count2, 1); // each listener gets exactly 1 copy
-    });
+        var count1 = 0;
+        var count2 = 0;
+        ch
+          ..messages.listen((_) {
+            count1++;
+          })
+          ..messages.listen((_) {
+            count2++;
+          });
+        t.toClient([
+          null,
+          null,
+          'room:multilistener',
+          'tick',
+          <String, dynamic>{},
+        ]);
+        await flush(4);
+        expect(count1, 1);
+        expect(count2, 1); // each listener gets exactly 1 copy
+      },
+    );
   });
 
   // =========================================================================
@@ -440,56 +508,75 @@ void main() {
   // What if app pushes an event called "phx_reply" or "phx_close"?
   // =========================================================================
   group('Push with control event names', () {
-    test('12. push event named phx_reply is sent to server (not filtered on send)',
-        () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:ctrl-name');
+    test(
+      '12. push event named phx_reply is sent to server (not filtered on send)',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:ctrl-name');
 
-      // App pushes an event named like a control event
-      unawaited(ch.push('phx_reply', {'custom': true}).then((_) {}, onError: (_) {}));
-      await flush(4);
+        // App pushes an event named like a control event
+        unawaited(
+          ch.push('phx_reply', {'custom': true}).then((_) {}, onError: (_) {}),
+        );
+        await flush(4);
 
-      // The push IS sent to the server (filtering is only on incoming)
-      final sent = t.sent.where((r) => t.evnt(r) == 'phx_reply').toList();
-      expect(sent, hasLength(1));
-    });
+        // The push IS sent to the server (filtering is only on incoming)
+        final sent = t.sent.where((r) => t.evnt(r) == 'phx_reply').toList();
+        expect(sent, hasLength(1));
+      },
+    );
 
-    test('13. server broadcast with app event named phx_reply is filtered',
-        () async {
-      // Incoming phx_reply is always treated as a push reply, not a broadcast
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:ctrl-incoming');
-      final msgs = <PhoenixMessage>[];
-      ch.messages.listen(msgs.add);
+    test(
+      '13. server broadcast with app event named phx_reply is filtered',
+      () async {
+        // Incoming phx_reply is always treated as a push reply, not a broadcast
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:ctrl-incoming');
+        final msgs = <PhoenixMessage>[];
+        ch.messages.listen(msgs.add);
 
-      // Server sends something that looks like a broadcast phx_reply with no ref
-      t.toClient([null, null, 'room:ctrl-incoming', 'phx_reply',
-        {'status': 'ok', 'response': <String, dynamic>{}}]);
-      await flush(4);
+        // Server sends something that looks like a broadcast phx_reply with no ref
+        t.toClient([
+          null,
+          null,
+          'room:ctrl-incoming',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
+        await flush(4);
 
-      // Should NOT appear in messages stream (filtered as control)
-      expect(msgs.where((m) => m.event == 'phx_reply'), isEmpty);
-    });
+        // Should NOT appear in messages stream (filtered as control)
+        expect(msgs.where((m) => m.event == 'phx_reply'), isEmpty);
+      },
+    );
   });
 
   // =========================================================================
   // Bug: Reply for unknown ref on correct topic — silently ignored
   // =========================================================================
   group('Unknown ref handling', () {
-    test('14. server reply for unknown ref — silently ignored, no crash', () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:unknownref');
+    test(
+      '14. server reply for unknown ref — silently ignored, no crash',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:unknownref');
 
-      // Server sends reply for a ref we never sent
-      t.toClient([t.jRef(t.sent.last), '9999', 'room:unknownref', 'phx_reply',
-        {'status': 'ok', 'response': <String, dynamic>{}}]);
-      await flush(4);
-      expect(t.socket.state, PhoenixSocketState.connected);
-      expect(ch.state, PhoenixChannelState.joined);
-    });
+        // Server sends reply for a ref we never sent
+        t.toClient([
+          t.jRef(t.sent.last),
+          '9999',
+          'room:unknownref',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
+        await flush(4);
+        expect(t.socket.state, PhoenixSocketState.connected);
+        expect(ch.state, PhoenixChannelState.joined);
+      },
+    );
 
     test('15. server reply for already-timed-out push — no double complete', () {
       fakeAsync((async) {
@@ -507,11 +594,23 @@ void main() {
         async.flushMicrotasks();
 
         var timedOut = false;
-        unawaited(ch.push('slow_event', {}).then((_) {},
-            onError: (_) { timedOut = true; }));
+        unawaited(
+          ch
+              .push('slow_event', {})
+              .then(
+                (_) {},
+                onError: (_) {
+                  timedOut = true;
+                },
+              ),
+        );
         async.flushMicrotasks();
-        final pushRef = t.ref(t.sent.lastWhere((r) => t.evnt(r) == 'slow_event'));
-        final pushJoinRef = t.jRef(t.sent.lastWhere((r) => t.evnt(r) == 'slow_event'));
+        final pushRef = t.ref(
+          t.sent.lastWhere((r) => t.evnt(r) == 'slow_event'),
+        );
+        final pushJoinRef = t.jRef(
+          t.sent.lastWhere((r) => t.evnt(r) == 'slow_event'),
+        );
 
         // Push times out at 10s
         async
@@ -538,7 +637,13 @@ void main() {
       await t.connect();
       final ch = await joinedChannel(t, 'room:close-null-ref');
 
-      t.toClient([null, null, 'room:close-null-ref', 'phx_close', <String, dynamic>{}]);
+      t.toClient([
+        null,
+        null,
+        'room:close-null-ref',
+        'phx_close',
+        <String, dynamic>{},
+      ]);
       await flush(4);
       expect(ch.state, PhoenixChannelState.closed);
     });
@@ -548,7 +653,13 @@ void main() {
       await t.connect();
       final ch = await joinedChannel(t, 'room:close-with-ref');
 
-      t.toClient([null, '42', 'room:close-with-ref', 'phx_close', <String, dynamic>{}]);
+      t.toClient([
+        null,
+        '42',
+        'room:close-with-ref',
+        'phx_close',
+        <String, dynamic>{},
+      ]);
       await flush(4);
       expect(ch.state, PhoenixChannelState.closed);
     });
@@ -567,7 +678,13 @@ void main() {
       ch.messages.listen((m) => order.add(m.payload['n'] as int));
 
       for (var i = 0; i < 5; i++) {
-        t.toClient([null, null, 'room:ordering', 'tick', {'n': i}]);
+        t.toClient([
+          null,
+          null,
+          'room:ordering',
+          'tick',
+          {'n': i},
+        ]);
       }
       await flush(10);
       expect(order, [0, 1, 2, 3, 4]);
@@ -591,7 +708,11 @@ void main() {
         final results = <int>[];
         for (var i = 0; i < 3; i++) {
           final idx = i;
-          unawaited(ch.push('push_$i', {}).then((_) { results.add(idx); }));
+          unawaited(
+            ch.push('push_$i', {}).then((_) {
+              results.add(idx);
+            }),
+          );
         }
         async.flushMicrotasks();
 
@@ -617,35 +738,45 @@ void main() {
   // Socket crashes while buffer is being flushed after join
   // =========================================================================
   group('Disconnect during push buffer flush', () {
-    test('20. socket crash during buffer flush — buffered pushes error cleanly',
-        () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '20. socket crash during buffer flush — buffered pushes error cleanly',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = t.socket.channel('room:flush-crash');
-      unawaited(ch.join().then((_) {}, onError: (_) {}));
-      await flush();
-      final joinRef = t.ref(t.sent.last);
+        final ch = t.socket.channel('room:flush-crash');
+        unawaited(ch.join().then((_) {}, onError: (_) {}));
+        await flush();
+        final joinRef = t.ref(t.sent.last);
 
-      // Buffer some pushes
-      var errCount = 0;
-      for (var i = 0; i < 3; i++) {
-        unawaited(ch.push('buffered_$i', {}).then((_) {},
-            onError: (_) { errCount++; }));
-      }
-      await flush();
+        // Buffer some pushes
+        var errCount = 0;
+        for (var i = 0; i < 3; i++) {
+          unawaited(
+            ch
+                .push('buffered_$i', {})
+                .then(
+                  (_) {},
+                  onError: (_) {
+                    errCount++;
+                  },
+                ),
+          );
+        }
+        await flush();
 
-      // Crash socket at the same time as join reply
-      // (simulates crash during buffer flush)
-      t
-        ..replyJoinOk(joinRef, 'room:flush-crash')
-        ..drop(); // crash immediately after
-      await flush(10);
+        // Crash socket at the same time as join reply
+        // (simulates crash during buffer flush)
+        t
+          ..replyJoinOk(joinRef, 'room:flush-crash')
+          ..drop(); // crash immediately after
+        await flush(10);
 
-      // Pushes that weren't replied to should error (from disconnect cleanup)
-      // At minimum no hangs — socket is gone
-      expect(t.socket.state, PhoenixSocketState.reconnecting);
-    });
+        // Pushes that weren't replied to should error (from disconnect cleanup)
+        // At minimum no hangs — socket is gone
+        expect(t.socket.state, PhoenixSocketState.reconnecting);
+      },
+    );
   });
 
   // =========================================================================
@@ -653,37 +784,37 @@ void main() {
   // rejoins channels in errored state — what if it missed the errored transition?
   // =========================================================================
   group('Rejoin only errored channels', () {
-    test('21. joined channels are NOT rejoined after reconnect (already joined)',
-        () {
-      fakeAsync((async) {
-        final t = T()..init();
-        unawaited(t.socket.connect());
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        final ch = t.socket.channel('room:already-joined');
-        unawaited(ch.join());
-        async.flushMicrotasks();
-        final jRef = t.ref(t.sent.last);
-        t.replyJoinOk(jRef, 'room:already-joined');
-        async.flushMicrotasks();
-        expect(ch.state, PhoenixChannelState.joined);
+    test(
+      '21. joined channels are NOT rejoined after reconnect (already joined)',
+      () {
+        fakeAsync((async) {
+          final t = T()..init();
+          unawaited(t.socket.connect());
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          final ch = t.socket.channel('room:already-joined');
+          unawaited(ch.join());
+          async.flushMicrotasks();
+          final jRef = t.ref(t.sent.last);
+          t.replyJoinOk(jRef, 'room:already-joined');
+          async.flushMicrotasks();
+          expect(ch.state, PhoenixChannelState.joined);
 
-        // Crash → channel goes errored → reconnect → rejoin fires
-        t.drop();
-        async.flushMicrotasks();
-        expect(ch.state, PhoenixChannelState.errored); // must be errored
+          // Crash → channel goes errored → reconnect → rejoin fires
+          t.drop();
+          async.flushMicrotasks();
+          expect(ch.state, PhoenixChannelState.errored); // must be errored
 
-        async
-          ..elapse(const Duration(seconds: 2))
-          ..flushMicrotasks();
-        final joins = t.sent
-            .where((r) => t.evnt(r) == 'phx_join')
-            .toList();
-        expect(joins.length, greaterThanOrEqualTo(2)); // original + rejoin
-      });
-    });
+          async
+            ..elapse(const Duration(seconds: 2))
+            ..flushMicrotasks();
+          final joins = t.sent.where((r) => t.evnt(r) == 'phx_join').toList();
+          expect(joins.length, greaterThanOrEqualTo(2)); // original + rejoin
+        });
+      },
+    );
 
     test('22. closed channel is NOT rejoined after reconnect', () {
       fakeAsync((async) {
@@ -714,9 +845,7 @@ void main() {
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 2))
           ..flushMicrotasks();
-        final joins = t.sent
-            .where((r) => t.evnt(r) == 'phx_join')
-            .toList();
+        final joins = t.sent.where((r) => t.evnt(r) == 'phx_join').toList();
         expect(joins.length, 1); // only the original join
       });
     });
@@ -726,34 +855,48 @@ void main() {
   // Bug: Listener added during message delivery — should not receive current msg
   // =========================================================================
   group('Listener added during delivery', () {
-    test('23. listener added inside another listener callback — no re-entrant delivery',
-        () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:reentrant');
+    test(
+      '23. listener added inside another listener callback — no re-entrant delivery',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:reentrant');
 
-      final received = <String>[];
-      ch.messages.listen((m) {
-        received.add('outer:${m.payload['n']}');
-        // Add another listener during delivery
-        ch.messages.listen((m2) {
-          received.add('inner:${m2.payload['n']}');
+        final received = <String>[];
+        ch.messages.listen((m) {
+          received.add('outer:${m.payload['n']}');
+          // Add another listener during delivery
+          ch.messages.listen((m2) {
+            received.add('inner:${m2.payload['n']}');
+          });
         });
-      });
 
-      t.toClient([null, null, 'room:reentrant', 'evt', {'n': 1}]);
-      await flush(4);
-      // Outer fires for msg 1
-      expect(received, contains('outer:1'));
+        t.toClient([
+          null,
+          null,
+          'room:reentrant',
+          'evt',
+          {'n': 1},
+        ]);
+        await flush(4);
+        // Outer fires for msg 1
+        expect(received, contains('outer:1'));
 
-      // Second message — both outer and inner fire
-      t.toClient([null, null, 'room:reentrant', 'evt', {'n': 2}]);
-      await flush(4);
-      expect(received, contains('outer:2'));
-      expect(received, contains('inner:2'));
-      // Inner does NOT fire for msg 1 (was added after delivery)
-      expect(received, isNot(contains('inner:1')));
-    });
+        // Second message — both outer and inner fire
+        t.toClient([
+          null,
+          null,
+          'room:reentrant',
+          'evt',
+          {'n': 2},
+        ]);
+        await flush(4);
+        expect(received, contains('outer:2'));
+        expect(received, contains('inner:2'));
+        // Inner does NOT fire for msg 1 (was added after delivery)
+        expect(received, isNot(contains('inner:1')));
+      },
+    );
   });
 
   // =========================================================================
@@ -767,9 +910,14 @@ void main() {
 
       var leaveDone = false;
       var leaveErrored = false;
-      final leaveFuture = ch.leave()
-          .then((_) { leaveDone = true; })
-          .catchError((_) { leaveErrored = true; });
+      final leaveFuture = ch
+          .leave()
+          .then((_) {
+            leaveDone = true;
+          })
+          .catchError((_) {
+            leaveErrored = true;
+          });
 
       // Crash immediately after starting leave
       t.drop();
@@ -777,27 +925,33 @@ void main() {
       await leaveFuture;
 
       // Leave must complete (one way or another) — not hang
-      expect(leaveDone || leaveErrored || ch.state == PhoenixChannelState.closed,
-          isTrue);
+      expect(
+        leaveDone || leaveErrored || ch.state == PhoenixChannelState.closed,
+        isTrue,
+      );
     });
 
-    test('25. crash then leave — leave is a no-op (channel already errored)',
-        () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:crash-then-leave');
+    test(
+      '25. crash then leave — leave is a no-op (channel already errored)',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:crash-then-leave');
 
-      // Crash first
-      t.drop();
-      await flush();
-      expect(ch.state, PhoenixChannelState.errored);
+        // Crash first
+        t.drop();
+        await flush();
+        expect(ch.state, PhoenixChannelState.errored);
 
-      // Leave after crash — should not throw
-      await ch.leave();
-      // Best-effort: either closed or errored is acceptable
-      expect(ch.state,
-          anyOf(PhoenixChannelState.closed, PhoenixChannelState.errored));
-    });
+        // Leave after crash — should not throw
+        await ch.leave();
+        // Best-effort: either closed or errored is acceptable
+        expect(
+          ch.state,
+          anyOf(PhoenixChannelState.closed, PhoenixChannelState.errored),
+        );
+      },
+    );
   });
 
   // =========================================================================
@@ -839,31 +993,40 @@ void main() {
   // Bug: UTF-8 / special payload values
   // =========================================================================
   group('Payload edge cases', () {
-    test('28. unicode payload preserved through encode/decode round-trip', () async {
-      final t = T()..init();
-      await t.connect();
-      final ch = await joinedChannel(t, 'room:unicode');
+    test(
+      '28. unicode payload preserved through encode/decode round-trip',
+      () async {
+        final t = T()..init();
+        await t.connect();
+        final ch = await joinedChannel(t, 'room:unicode');
 
-      const emoji = '🔥💯🎯';
-      const arabic = 'مرحبا';
-      const chinese = '你好世界';
+        const emoji = '🔥💯🎯';
+        const arabic = 'مرحبا';
+        const chinese = '你好世界';
 
-      unawaited(ch.push('msg', {'text': '$emoji $arabic $chinese'})
-          .then((_) {}, onError: (_) {}));
-      await flush(4);
+        unawaited(
+          ch
+              .push('msg', {'text': '$emoji $arabic $chinese'})
+              .then((_) {}, onError: (_) {}),
+        );
+        await flush(4);
 
-      final raw = t.sent.lastWhere((r) => t.evnt(r) == 'msg');
-      final decoded = jsonDecode(raw as String) as List;
-      expect((decoded[4] as Map)['text'], '$emoji $arabic $chinese');
-    });
+        final raw = t.sent.lastWhere((r) => t.evnt(r) == 'msg');
+        final decoded = jsonDecode(raw as String) as List;
+        expect((decoded[4] as Map)['text'], '$emoji $arabic $chinese');
+      },
+    );
 
     test('29. null value in payload is preserved', () async {
       final t = T()..init();
       await t.connect();
       final ch = await joinedChannel(t, 'room:nullval');
 
-      unawaited(ch.push('msg', {'key': null, 'other': 'val'})
-          .then((_) {}, onError: (_) {}));
+      unawaited(
+        ch
+            .push('msg', {'key': null, 'other': 'val'})
+            .then((_) {}, onError: (_) {}),
+      );
       await flush(4);
 
       final raw = t.sent.lastWhere((r) => t.evnt(r) == 'msg');
@@ -878,7 +1041,19 @@ void main() {
       final ch = await joinedChannel(t, 'room:deep');
 
       final deep = {
-        'a': {'b': {'c': {'d': {'e': [1, 2, {'f': true}]}}}}
+        'a': {
+          'b': {
+            'c': {
+              'd': {
+                'e': [
+                  1,
+                  2,
+                  {'f': true},
+                ],
+              },
+            },
+          },
+        },
       };
       unawaited(ch.push('deep_push', deep).then((_) {}, onError: (_) {}));
       await flush(4);

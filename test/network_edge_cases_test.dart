@@ -62,18 +62,41 @@ class NetSetup {
   Map<String, dynamic> msgPayload(dynamic raw) =>
       ((jsonDecode(raw as String) as List)[4] as Map).cast<String, dynamic>();
 
-  void replyOk(String joinRef, String ref, String topic,
-      [Map<String, dynamic> response = const {}]) {
-    send([joinRef, ref, topic, 'phx_reply', {'status': 'ok', 'response': response}]);
+  void replyOk(
+    String joinRef,
+    String ref,
+    String topic, [
+    Map<String, dynamic> response = const {},
+  ]) {
+    send([
+      joinRef,
+      ref,
+      topic,
+      'phx_reply',
+      {'status': 'ok', 'response': response},
+    ]);
   }
 
-  void replyError(String joinRef, String ref, String topic,
-      [Map<String, dynamic> response = const {}]) {
-    send([joinRef, ref, topic, 'phx_reply', {'status': 'error', 'response': response}]);
+  void replyError(
+    String joinRef,
+    String ref,
+    String topic, [
+    Map<String, dynamic> response = const {},
+  ]) {
+    send([
+      joinRef,
+      ref,
+      topic,
+      'phx_reply',
+      {'status': 'error', 'response': response},
+    ]);
   }
 
-  void replyJoinOk(String ref, String topic,
-      [Map<String, dynamic> response = const {}]) {
+  void replyJoinOk(
+    String ref,
+    String topic, [
+    Map<String, dynamic> response = const {},
+  ]) {
     replyOk(ref, ref, topic, response);
   }
 
@@ -151,22 +174,24 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('4. disconnect before connect() resolves does not leave socket in bad state',
-        () async {
-      final s = NetSetup()..init();
-      // Start connect but don't await — cancel immediately
-      final connectFuture = s.connect();
-      // disconnect is called before connect resolves
-      final disconnectFuture = s.socket.disconnect();
-      await disconnectFuture;
-      await connectFuture;
-      // After both settle, socket must be in a usable state
-      expect(
-        s.socket.state,
-        isIn([PhoenixSocketState.disconnected, PhoenixSocketState.connected]),
-      );
-      await s.socket.disconnect();
-    });
+    test(
+      '4. disconnect before connect() resolves does not leave socket in bad state',
+      () async {
+        final s = NetSetup()..init();
+        // Start connect but don't await — cancel immediately
+        final connectFuture = s.connect();
+        // disconnect is called before connect resolves
+        final disconnectFuture = s.socket.disconnect();
+        await disconnectFuture;
+        await connectFuture;
+        // After both settle, socket must be in a usable state
+        expect(
+          s.socket.state,
+          isIn([PhoenixSocketState.disconnected, PhoenixSocketState.connected]),
+        );
+        await s.socket.disconnect();
+      },
+    );
 
     test('5. many connect() calls while connecting collapse to one WS', () {
       fakeAsync((async) {
@@ -300,21 +325,24 @@ void main() {
       });
     });
 
-    test('9. reconnect attempt counter resets after successful connect', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      // Simulate one failed cycle via channel
-      s.dropConnection();
-      await flush();
-      // Socket is reconnecting; forcibly reconnect by waiting
-      // (In this test we just verify reconnectAttempts resets on success)
-      await s.socket.disconnect();
-      await s.connect();
-      expect(s.socket.state, PhoenixSocketState.connected);
-      // If reconnect count did NOT reset, second disconnect+connect would use
-      // a longer delay. We just verify state is connected (count was reset).
-      await s.socket.disconnect();
-    });
+    test(
+      '9. reconnect attempt counter resets after successful connect',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        // Simulate one failed cycle via channel
+        s.dropConnection();
+        await flush();
+        // Socket is reconnecting; forcibly reconnect by waiting
+        // (In this test we just verify reconnectAttempts resets on success)
+        await s.socket.disconnect();
+        await s.connect();
+        expect(s.socket.state, PhoenixSocketState.connected);
+        // If reconnect count did NOT reset, second disconnect+connect would use
+        // a longer delay. We just verify state is connected (count was reset).
+        await s.socket.disconnect();
+      },
+    );
 
     test('10. intentional disconnect cancels pending reconnect timer', () {
       fakeAsync((async) {
@@ -358,10 +386,12 @@ void main() {
       final ch = await s.joinedChannel('room:lobby');
 
       Object? pushError;
-      unawaited(ch.push('msg', {'n': 1}).catchError((Object e) {
-        pushError = e;
-        return <String, dynamic>{};
-      }));
+      unawaited(
+        ch.push('msg', {'n': 1}).catchError((Object e) {
+          pushError = e;
+          return <String, dynamic>{};
+        }),
+      );
       await flush();
 
       // Drop network before reply arrives
@@ -379,10 +409,12 @@ void main() {
 
       final errors = <Object>[];
       for (var i = 0; i < 5; i++) {
-        unawaited(ch.push('msg', {'n': i}).catchError((Object e) {
-          errors.add(e);
-          return <String, dynamic>{};
-        }));
+        unawaited(
+          ch.push('msg', {'n': i}).catchError((Object e) {
+            errors.add(e);
+            return <String, dynamic>{};
+          }),
+        );
       }
       await flush();
       ch.onSocketDisconnect();
@@ -393,52 +425,64 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('13. join in flight when network drops — join future errors', () async {
-      final s = NetSetup()..init();
-      await s.connect();
+    test(
+      '13. join in flight when network drops — join future errors',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
 
-      final ch = s.socket.channel('room:test');
-      Object? joinError;
-      unawaited(ch.join().catchError((Object e) {
-        joinError = e;
-        return <String, dynamic>{};
-      }));
-      await flush();
+        final ch = s.socket.channel('room:test');
+        Object? joinError;
+        unawaited(
+          ch.join().catchError((Object e) {
+            joinError = e;
+            return <String, dynamic>{};
+          }),
+        );
+        await flush();
 
-      // Drop before server replies
-      ch.onSocketDisconnect();
-      await flush();
+        // Drop before server replies
+        ch.onSocketDisconnect();
+        await flush();
 
-      expect(joinError, isA<PhoenixException>());
-      await s.socket.disconnect();
-    });
+        expect(joinError, isA<PhoenixException>());
+        await s.socket.disconnect();
+      },
+    );
 
-    test('14. leave in flight when network drops — completes without error',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
+    test(
+      '14. leave in flight when network drops — completes without error',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
 
-      // Start leave, then drop before reply
-      final leaveFuture = ch.leave();
-      await flush();
+        // Start leave, then drop before reply
+        final leaveFuture = ch.leave();
+        await flush();
 
-      // Drop — leave's best-effort timeout will fire; we just check it completes
-      ch.onSocketDisconnect();
-      // Give a reasonable time for leave timeout (5s) — but we don't want to
-      // wait that long. The leave wraps timeout in try/catch, so it's fine.
-      // In async tests it just completes after the timeout; skip awaiting.
-      leaveFuture.ignore();
+        // Drop — leave's best-effort timeout will fire; we just check it completes
+        ch.onSocketDisconnect();
+        // Give a reasonable time for leave timeout (5s) — but we don't want to
+        // wait that long. The leave wraps timeout in try/catch, so it's fine.
+        // In async tests it just completes after the timeout; skip awaiting.
+        leaveFuture.ignore();
 
-      // Bug fix: onSocketDisconnect now transitions leaving → errored so the
-      // channel is not stuck. The leave() future catches the disconnect error
-      // and sets closed, but if checked synchronously after onSocketDisconnect
-      // the state may be errored (before leave() future completes).
-      expect(ch.state,
-          isIn([PhoenixChannelState.leaving, PhoenixChannelState.closed,
-                PhoenixChannelState.errored]));
-      await s.socket.disconnect();
-    });
+        // Bug fix: onSocketDisconnect now transitions leaving → errored so the
+        // channel is not stuck. The leave() future catches the disconnect error
+        // and sets closed, but if checked synchronously after onSocketDisconnect
+        // the state may be errored (before leave() future completes).
+        expect(
+          ch.state,
+          isIn([
+            PhoenixChannelState.leaving,
+            PhoenixChannelState.closed,
+            PhoenixChannelState.errored,
+          ]),
+        );
+        await s.socket.disconnect();
+      },
+    );
 
     test('15. reconnect after network drop re-establishes connection', () {
       fakeAsync((async) {
@@ -519,8 +563,16 @@ void main() {
 
       // Reply to buffered push
       final pushRef = s.msgRef(s.sent.last);
-      s.send([ref, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': {'v': 42}}]);
+      s.send([
+        ref,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {
+          'status': 'ok',
+          'response': {'v': 42},
+        },
+      ]);
       await flush(6);
 
       expect(result, isNotNull);
@@ -533,7 +585,7 @@ void main() {
       await s.connect();
       final ch = await s.joinedChannel('room:lobby')
         ..onSocketDisconnect();
-      final results = <Map<String, dynamic>?>[ null, null, null ];
+      final results = <Map<String, dynamic>?>[null, null, null];
       for (var i = 0; i < 3; i++) {
         final idx = i;
         unawaited(ch.push('msg', {'i': i}).then((r) => results[idx] = r));
@@ -556,8 +608,16 @@ void main() {
 
       // Reply to all 3 buffered pushes
       for (var i = 0; i < 3; i++) {
-        s.send([rejoinRef, pushRefs[i], 'room:lobby', 'phx_reply',
-            {'status': 'ok', 'response': {'i': i}}]);
+        s.send([
+          rejoinRef,
+          pushRefs[i],
+          'room:lobby',
+          'phx_reply',
+          {
+            'status': 'ok',
+            'response': {'i': i},
+          },
+        ]);
       }
       await flush(8);
 
@@ -582,13 +642,23 @@ void main() {
         final hbRef = hb[1] as String;
 
         // Reply with wrong ref first (should be ignored)
-        s.send([null, '9999', 'phoenix', 'phx_reply',
-            {'status': 'ok', 'response': <String, dynamic>{}}]);
+        s.send([
+          null,
+          '9999',
+          'phoenix',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
         async.flushMicrotasks();
 
         // Reply with correct ref
-        s.send([null, hbRef, 'phoenix', 'phx_reply',
-            {'status': 'ok', 'response': <String, dynamic>{}}]);
+        s.send([
+          null,
+          hbRef,
+          'phoenix',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
         async
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 30))
@@ -611,8 +681,13 @@ void main() {
 
         // Reply 1ms before second tick
         async.elapse(const Duration(milliseconds: 29999));
-        s.send([null, hbRef, 'phoenix', 'phx_reply',
-            {'status': 'ok', 'response': <String, dynamic>{}}]);
+        s.send([
+          null,
+          hbRef,
+          'phoenix',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
         async
           ..flushMicrotasks()
           ..elapse(const Duration(milliseconds: 1))
@@ -670,38 +745,40 @@ void main() {
       });
     });
 
-    test('23. consecutive missed heartbeats each trigger exactly one reconnect',
-        () {
-      fakeAsync((async) {
-        var reconnects = 0;
-        final socket = PhoenixSocket(
-          'ws://localhost:4000/socket/websocket',
-          channelFactory: (uri) {
-            reconnects++;
-            return FakeWebSocketChannel();
-          },
-        );
+    test(
+      '23. consecutive missed heartbeats each trigger exactly one reconnect',
+      () {
+        fakeAsync((async) {
+          var reconnects = 0;
+          final socket = PhoenixSocket(
+            'ws://localhost:4000/socket/websocket',
+            channelFactory: (uri) {
+              reconnects++;
+              return FakeWebSocketChannel();
+            },
+          );
 
-        unawaited(socket.connect());
-        async.flushMicrotasks();
-        expect(reconnects, 1);
+          unawaited(socket.connect());
+          async.flushMicrotasks();
+          expect(reconnects, 1);
 
-        // Miss first heartbeat (fires at 30s), detected at 60s
-        async
-          ..elapse(const Duration(seconds: 60))
-          ..flushMicrotasks();
-        expect(socket.state, PhoenixSocketState.reconnecting);
+          // Miss first heartbeat (fires at 30s), detected at 60s
+          async
+            ..elapse(const Duration(seconds: 60))
+            ..flushMicrotasks();
+          expect(socket.state, PhoenixSocketState.reconnecting);
 
-        // Reconnect fires at 61s (1s delay)
-        async
-          ..elapse(const Duration(seconds: 1))
-          ..flushMicrotasks();
-        expect(reconnects, 2);
+          // Reconnect fires at 61s (1s delay)
+          async
+            ..elapse(const Duration(seconds: 1))
+            ..flushMicrotasks();
+          expect(reconnects, 2);
 
-        unawaited(socket.disconnect());
-        async.flushMicrotasks();
-      });
-    });
+          unawaited(socket.disconnect());
+          async.flushMicrotasks();
+        });
+      },
+    );
 
     test('24. heartbeat topic is always "phoenix"', () {
       fakeAsync((async) {
@@ -735,7 +812,13 @@ void main() {
       ch.messages.listen((m) => msgs.add(m.payload));
 
       for (var i = 0; i < 5; i++) {
-        s.send([joinRef, null, 'room:lobby', 'new_msg', {'seq': i}]);
+        s.send([
+          joinRef,
+          null,
+          'room:lobby',
+          'new_msg',
+          {'seq': i},
+        ]);
       }
       await flush(8);
 
@@ -746,44 +829,70 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('26. push replies arrive out of order — each resolves correct future',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
-      final joinRef = s.msgRef(s.sent.last);
+    test(
+      '26. push replies arrive out of order — each resolves correct future',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
+        final joinRef = s.msgRef(s.sent.last);
 
-      Map<String, dynamic>? r1;
-      Map<String, dynamic>? r2;
-      Map<String, dynamic>? r3;
-      unawaited(ch.push('a', {}).then((r) => r1 = r));
-      unawaited(ch.push('b', {}).then((r) => r2 = r));
-      unawaited(ch.push('c', {}).then((r) => r3 = r));
-      await flush();
+        Map<String, dynamic>? r1;
+        Map<String, dynamic>? r2;
+        Map<String, dynamic>? r3;
+        unawaited(ch.push('a', {}).then((r) => r1 = r));
+        unawaited(ch.push('b', {}).then((r) => r2 = r));
+        unawaited(ch.push('c', {}).then((r) => r3 = r));
+        await flush();
 
-      // Extract the 3 push refs (last 3 sent messages after join)
-      final pushMsgs = s.sent
-          .map((m) => jsonDecode(m as String) as List)
-          .where((m) => m[3] != 'phx_join')
-          .toList();
-      final refs = pushMsgs.map((m) => m[1] as String).toList();
-      expect(refs, hasLength(3));
+        // Extract the 3 push refs (last 3 sent messages after join)
+        final pushMsgs = s.sent
+            .map((m) => jsonDecode(m as String) as List)
+            .where((m) => m[3] != 'phx_join')
+            .toList();
+        final refs = pushMsgs.map((m) => m[1] as String).toList();
+        expect(refs, hasLength(3));
 
-      // Reply out of order: c, a, b
-      s
-        ..send([joinRef, refs[2], 'room:lobby', 'phx_reply',
-            {'status': 'ok', 'response': {'event': 'c'}}])
-        ..send([joinRef, refs[0], 'room:lobby', 'phx_reply',
-            {'status': 'ok', 'response': {'event': 'a'}}])
-        ..send([joinRef, refs[1], 'room:lobby', 'phx_reply',
-            {'status': 'ok', 'response': {'event': 'b'}}]);
-      await flush();
+        // Reply out of order: c, a, b
+        s
+          ..send([
+            joinRef,
+            refs[2],
+            'room:lobby',
+            'phx_reply',
+            {
+              'status': 'ok',
+              'response': {'event': 'c'},
+            },
+          ])
+          ..send([
+            joinRef,
+            refs[0],
+            'room:lobby',
+            'phx_reply',
+            {
+              'status': 'ok',
+              'response': {'event': 'a'},
+            },
+          ])
+          ..send([
+            joinRef,
+            refs[1],
+            'room:lobby',
+            'phx_reply',
+            {
+              'status': 'ok',
+              'response': {'event': 'b'},
+            },
+          ]);
+        await flush();
 
-      expect(r1!['event'], 'a');
-      expect(r2!['event'], 'b');
-      expect(r3!['event'], 'c');
-      await s.socket.disconnect();
-    });
+        expect(r1!['event'], 'a');
+        expect(r2!['event'], 'b');
+        expect(r3!['event'], 'c');
+        await s.socket.disconnect();
+      },
+    );
 
     test('27. large payload (10 KB) is sent and received correctly', () async {
       final s = NetSetup()..init();
@@ -797,8 +906,16 @@ void main() {
       await flush();
 
       final pushRef = s.msgRef(s.sent.last);
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': {'echoed': bigData}}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {
+          'status': 'ok',
+          'response': {'echoed': bigData},
+        },
+      ]);
       await flush();
 
       expect(result!['echoed'], bigData);
@@ -812,16 +929,37 @@ void main() {
       final joinRef = s.msgRef(s.sent.last);
 
       final nested = {
-        'a': {'b': {'c': {'d': {'e': 'deep'}}}},
-        'list': [1, 2, [3, [4, [5]]]],
+        'a': {
+          'b': {
+            'c': {
+              'd': {'e': 'deep'},
+            },
+          },
+        },
+        'list': [
+          1,
+          2,
+          [
+            3,
+            [
+              4,
+              [5],
+            ],
+          ],
+        ],
       };
       Map<String, dynamic>? result;
       unawaited(ch.push('nested', nested).then((r) => result = r));
       await flush();
 
       final pushRef = s.msgRef(s.sent.last);
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': nested}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {'status': 'ok', 'response': nested},
+      ]);
       await flush();
 
       expect(result!['a'], nested['a']);
@@ -838,8 +976,13 @@ void main() {
       unawaited(ch.push('ping', {}).then((r) => result = r));
       await flush();
       final pushRef = s.msgRef(s.sent.last);
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await flush();
 
       expect(result, isEmpty);
@@ -873,8 +1016,10 @@ void main() {
       await flush();
 
       await Future.wait(joinFutures);
-      expect(channels.every((c) => c.state == PhoenixChannelState.joined),
-          isTrue);
+      expect(
+        channels.every((c) => c.state == PhoenixChannelState.joined),
+        isTrue,
+      );
       await s.socket.disconnect();
     });
 
@@ -884,10 +1029,16 @@ void main() {
 
       final chA = await s.joinedChannel('room:a');
       final chB = await s.joinedChannel('room:b');
-      final joinRefA = s.msgRef(s.sent.firstWhere(
-          (m) => s.msgTopic(m) == 'room:a' && s.msgEvent(m) == 'phx_join'));
-      final joinRefB = s.msgRef(s.sent.firstWhere(
-          (m) => s.msgTopic(m) == 'room:b' && s.msgEvent(m) == 'phx_join'));
+      final joinRefA = s.msgRef(
+        s.sent.firstWhere(
+          (m) => s.msgTopic(m) == 'room:a' && s.msgEvent(m) == 'phx_join',
+        ),
+      );
+      final joinRefB = s.msgRef(
+        s.sent.firstWhere(
+          (m) => s.msgTopic(m) == 'room:b' && s.msgEvent(m) == 'phx_join',
+        ),
+      );
 
       final aMessages = <PhoenixMessage>[];
       final bMessages = <PhoenixMessage>[];
@@ -895,8 +1046,20 @@ void main() {
       chB.messages.listen(bMessages.add);
 
       s
-        ..send([joinRefA, null, 'room:a', 'new_msg', {'to': 'a'}])
-        ..send([joinRefB, null, 'room:b', 'new_msg', {'to': 'b'}]);
+        ..send([
+          joinRefA,
+          null,
+          'room:a',
+          'new_msg',
+          {'to': 'a'},
+        ])
+        ..send([
+          joinRefB,
+          null,
+          'room:b',
+          'new_msg',
+          {'to': 'b'},
+        ]);
       await flush();
 
       expect(aMessages, hasLength(1));
@@ -906,25 +1069,30 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('32. same topic cannot be joined twice via same channel instance',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
+    test(
+      '32. same topic cannot be joined twice via same channel instance',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
 
-      // Second join on same instance must throw StateError
-      expect(ch.join, throwsStateError);
-      await s.socket.disconnect();
-    });
+        // Second join on same instance must throw StateError
+        expect(ch.join, throwsStateError);
+        await s.socket.disconnect();
+      },
+    );
 
-    test('33. socket.channel() with same topic returns same instance', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch1 = s.socket.channel('room:shared');
-      final ch2 = s.socket.channel('room:shared');
-      expect(identical(ch1, ch2), isTrue);
-      await s.socket.disconnect();
-    });
+    test(
+      '33. socket.channel() with same topic returns same instance',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch1 = s.socket.channel('room:shared');
+        final ch2 = s.socket.channel('room:shared');
+        expect(identical(ch1, ch2), isTrue);
+        await s.socket.disconnect();
+      },
+    );
 
     test('34. disconnect errors all channels, not just some', () async {
       final s = NetSetup()..init();
@@ -941,37 +1109,42 @@ void main() {
         ch.onSocketDisconnect();
       }
 
-      expect(channels.every((c) => c.state == PhoenixChannelState.errored),
-          isTrue);
+      expect(
+        channels.every((c) => c.state == PhoenixChannelState.errored),
+        isTrue,
+      );
       await s.socket.disconnect();
     });
 
-    test('35. two channels with same base name but different subtopics', () async {
-      final s = NetSetup()..init();
-      await s.connect();
+    test(
+      '35. two channels with same base name but different subtopics',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
 
-      final chLobby = s.socket.channel('room:lobby');
-      final chPrivate = s.socket.channel('room:private:1');
+        final chLobby = s.socket.channel('room:lobby');
+        final chPrivate = s.socket.channel('room:private:1');
 
-      final fLobby = chLobby.join();
-      await flush();
-      final refLobby = s.msgRef(s.sent.last);
+        final fLobby = chLobby.join();
+        await flush();
+        final refLobby = s.msgRef(s.sent.last);
 
-      final fPrivate = chPrivate.join();
-      await flush();
-      final refPrivate = s.msgRef(s.sent.last);
+        final fPrivate = chPrivate.join();
+        await flush();
+        final refPrivate = s.msgRef(s.sent.last);
 
-      s
-        ..replyJoinOk(refLobby, 'room:lobby')
-        ..replyJoinOk(refPrivate, 'room:private:1');
-      await flush();
+        s
+          ..replyJoinOk(refLobby, 'room:lobby')
+          ..replyJoinOk(refPrivate, 'room:private:1');
+        await flush();
 
-      await fLobby;
-      await fPrivate;
-      expect(chLobby.state, PhoenixChannelState.joined);
-      expect(chPrivate.state, PhoenixChannelState.joined);
-      await s.socket.disconnect();
-    });
+        await fLobby;
+        await fPrivate;
+        expect(chLobby.state, PhoenixChannelState.joined);
+        expect(chPrivate.state, PhoenixChannelState.joined);
+        await s.socket.disconnect();
+      },
+    );
   });
 
   // =========================================================================
@@ -988,7 +1161,9 @@ void main() {
       final results = List<Map<String, dynamic>?>.filled(50, null);
       for (var i = 0; i < 50; i++) {
         final idx = i;
-        unawaited(ch.push('push_event', {'i': i}).then((r) => results[idx] = r));
+        unawaited(
+          ch.push('push_event', {'i': i}).then((r) => results[idx] = r),
+        );
       }
       // Async broadcast delivers 1 event per microtask; flush enough for all
       await flush(60);
@@ -1001,8 +1176,16 @@ void main() {
 
       for (var i = 0; i < 50; i++) {
         final ref = pushMsgs[i][1] as String;
-        s.send([joinRef, ref, 'room:lobby', 'phx_reply',
-            {'status': 'ok', 'response': {'i': i}}]);
+        s.send([
+          joinRef,
+          ref,
+          'room:lobby',
+          'phx_reply',
+          {
+            'status': 'ok',
+            'response': {'i': i},
+          },
+        ]);
       }
       await flush(60);
 
@@ -1010,26 +1193,30 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('37. push storm followed by disconnect errors all in-flight pushes',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
+    test(
+      '37. push storm followed by disconnect errors all in-flight pushes',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
 
-      final errors = <Object>[];
-      for (var i = 0; i < 20; i++) {
-        unawaited(ch.push('msg', {'i': i}).catchError((Object e) {
-          errors.add(e);
-          return <String, dynamic>{};
-        }));
-      }
-      await flush();
-      ch.onSocketDisconnect();
-      await flush();
+        final errors = <Object>[];
+        for (var i = 0; i < 20; i++) {
+          unawaited(
+            ch.push('msg', {'i': i}).catchError((Object e) {
+              errors.add(e);
+              return <String, dynamic>{};
+            }),
+          );
+        }
+        await flush();
+        ch.onSocketDisconnect();
+        await flush();
 
-      expect(errors, hasLength(20));
-      await s.socket.disconnect();
-    });
+        expect(errors, hasLength(20));
+        await s.socket.disconnect();
+      },
+    );
 
     test('38. server broadcast storm is all delivered in order', () async {
       final s = NetSetup()..init();
@@ -1041,7 +1228,13 @@ void main() {
       ch.messages.listen((m) => received.add(m.payload['n'] as int));
 
       for (var i = 0; i < 100; i++) {
-        s.send([joinRef, null, 'room:lobby', 'broadcast', {'n': i}]);
+        s.send([
+          joinRef,
+          null,
+          'room:lobby',
+          'broadcast',
+          {'n': i},
+        ]);
       }
       // Async broadcast delivers 1 event per microtask flush
       await flush(120);
@@ -1065,7 +1258,13 @@ void main() {
       ch.messages.listen(msgs.add);
 
       // Broadcast with null joinRef
-      s.send([null, null, 'room:lobby', 'broadcast', {'data': 'hi'}]);
+      s.send([
+        null,
+        null,
+        'room:lobby',
+        'broadcast',
+        {'data': 'hi'},
+      ]);
       await flush();
 
       expect(msgs, hasLength(1));
@@ -1073,57 +1272,79 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('40. message with joinRef matching current join is not filtered',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
-      final joinRef = s.msgJoinRef(s.sent.last);
+    test(
+      '40. message with joinRef matching current join is not filtered',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
+        final joinRef = s.msgJoinRef(s.sent.last);
 
-      final msgs = <PhoenixMessage>[];
-      ch.messages.listen(msgs.add);
+        final msgs = <PhoenixMessage>[];
+        ch.messages.listen(msgs.add);
 
-      s.send([joinRef, null, 'room:lobby', 'event', {'x': 1}]);
-      await flush();
+        s.send([
+          joinRef,
+          null,
+          'room:lobby',
+          'event',
+          {'x': 1},
+        ]);
+        await flush();
 
-      expect(msgs, hasLength(1));
-      await s.socket.disconnect();
-    });
+        expect(msgs, hasLength(1));
+        await s.socket.disconnect();
+      },
+    );
 
-    test('41. message with stale joinRef (old join) is silently dropped',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
+    test(
+      '41. message with stale joinRef (old join) is silently dropped',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
 
-      final ch = s.socket.channel('room:lobby');
-      // Attach error handler BEFORE the error fires
-      unawaited(ch.join().catchError((_) => <String, dynamic>{}));
-      await flush();
-      final oldRef = s.msgRef(s.sent.last);
-      // Simulate join error to make channel errored and trigger rejoin
-      s.replyError(oldRef, oldRef, 'room:lobby');
-      await flush();
+        final ch = s.socket.channel('room:lobby');
+        // Attach error handler BEFORE the error fires
+        unawaited(ch.join().catchError((_) => <String, dynamic>{}));
+        await flush();
+        final oldRef = s.msgRef(s.sent.last);
+        // Simulate join error to make channel errored and trigger rejoin
+        s.replyError(oldRef, oldRef, 'room:lobby');
+        await flush();
 
-      // Rejoin
-      ch.rejoin();
-      await flush();
-      final newRef = s.msgRef(s.sent.last);
-      s.replyJoinOk(newRef, 'room:lobby');
-      await flush();
+        // Rejoin
+        ch.rejoin();
+        await flush();
+        final newRef = s.msgRef(s.sent.last);
+        s.replyJoinOk(newRef, 'room:lobby');
+        await flush();
 
-      final msgs = <PhoenixMessage>[];
-      ch.messages.listen(msgs.add);
+        final msgs = <PhoenixMessage>[];
+        ch.messages.listen(msgs.add);
 
-      // Message with OLD joinRef should be dropped
-      s
-        ..send([oldRef, null, 'room:lobby', 'stale_event', <String, dynamic>{}])
-        ..send([newRef, null, 'room:lobby', 'fresh_event', <String, dynamic>{}]);
-      await flush();
+        // Message with OLD joinRef should be dropped
+        s
+          ..send([
+            oldRef,
+            null,
+            'room:lobby',
+            'stale_event',
+            <String, dynamic>{},
+          ])
+          ..send([
+            newRef,
+            null,
+            'room:lobby',
+            'fresh_event',
+            <String, dynamic>{},
+          ]);
+        await flush();
 
-      expect(msgs, hasLength(1));
-      expect(msgs.first.event, 'fresh_event');
-      await s.socket.disconnect();
-    });
+        expect(msgs, hasLength(1));
+        expect(msgs.first.event, 'fresh_event');
+        await s.socket.disconnect();
+      },
+    );
 
     test('42. phx_reply event not emitted on messages stream', () async {
       final s = NetSetup()..init();
@@ -1135,8 +1356,13 @@ void main() {
       ch.messages.listen(msgs.add);
 
       // Send a phx_reply (not for any pending ref — just to test filtering)
-      s.send([joinRef, '999', 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      s.send([
+        joinRef,
+        '999',
+        'room:lobby',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await flush();
 
       expect(msgs, isEmpty);
@@ -1182,8 +1408,13 @@ void main() {
       ch.messages.listen(msgs.add);
 
       // Fake heartbeat reply — routed to socket, not channel
-      s.send([null, '1', 'phoenix', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      s.send([
+        null,
+        '1',
+        'phoenix',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await flush();
 
       // Channel should NOT receive this
@@ -1196,7 +1427,13 @@ void main() {
       await s.connect();
 
       // Message for a topic that has no registered channel
-      s.send([null, null, 'room:no_such_channel', 'new_msg', {'x': 1}]);
+      s.send([
+        null,
+        null,
+        'room:no_such_channel',
+        'new_msg',
+        {'x': 1},
+      ]);
       await flush();
 
       // Socket stays connected
@@ -1204,21 +1441,30 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('47. empty string event name is forwarded to messages stream', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
-      final joinRef = s.msgRef(s.sent.last);
+    test(
+      '47. empty string event name is forwarded to messages stream',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
+        final joinRef = s.msgRef(s.sent.last);
 
-      final msgs = <PhoenixMessage>[];
-      ch.messages.listen(msgs.add);
+        final msgs = <PhoenixMessage>[];
+        ch.messages.listen(msgs.add);
 
-      s.send([joinRef, null, 'room:lobby', 'custom_event', <String, dynamic>{}]);
-      await flush();
-      expect(msgs, hasLength(1));
-      expect(msgs.first.event, 'custom_event');
-      await s.socket.disconnect();
-    });
+        s.send([
+          joinRef,
+          null,
+          'room:lobby',
+          'custom_event',
+          <String, dynamic>{},
+        ]);
+        await flush();
+        expect(msgs, hasLength(1));
+        expect(msgs.first.event, 'custom_event');
+        await s.socket.disconnect();
+      },
+    );
 
     test('48. vsn=2.0.0 is always included in the URL query params', () async {
       Uri? capturedUri;
@@ -1251,17 +1497,21 @@ void main() {
       await socket.disconnect();
     });
 
-    test('50. socket message with number ref (not string) is ignored gracefully',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      // Send a message where ref is a number, not a string
-      s.server.sink.add(jsonEncode([null, 42, 'room:lobby', 'event', <String, dynamic>{}]));
-      await flush();
-      // Socket stays connected — malformed message silently dropped
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '50. socket message with number ref (not string) is ignored gracefully',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        // Send a message where ref is a number, not a string
+        s.server.sink.add(
+          jsonEncode([null, 42, 'room:lobby', 'event', <String, dynamic>{}]),
+        );
+        await flush();
+        // Socket stays connected — malformed message silently dropped
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
   });
 
   // =========================================================================
@@ -1283,10 +1533,12 @@ void main() {
         f.ignore();
 
         Object? pushError;
-        unawaited(ch.push('msg', {}).catchError((Object e) {
-          pushError = e;
-          return <String, dynamic>{};
-        }));
+        unawaited(
+          ch.push('msg', {}).catchError((Object e) {
+            pushError = e;
+            return <String, dynamic>{};
+          }),
+        );
         async
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 9))
@@ -1311,10 +1563,12 @@ void main() {
 
         final ch = s.socket.channel('room:lobby');
         Object? joinError;
-        unawaited(ch.join().catchError((Object e) {
-          joinError = e;
-          return <String, dynamic>{};
-        }));
+        unawaited(
+          ch.join().catchError((Object e) {
+            joinError = e;
+            return <String, dynamic>{};
+          }),
+        );
         async
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 10))
@@ -1342,11 +1596,18 @@ void main() {
         joinF.ignore();
 
         var resultCount = 0;
-        unawaited(ch.push('msg', {}).then((_) {
-          resultCount++;
-        }, onError: (_) {
-          // timeout — expected
-        }));
+        unawaited(
+          ch
+              .push('msg', {})
+              .then(
+                (_) {
+                  resultCount++;
+                },
+                onError: (_) {
+                  // timeout — expected
+                },
+              ),
+        );
         async.flushMicrotasks();
         final pushRef = s.msgRef(s.sent.last);
 
@@ -1354,8 +1615,13 @@ void main() {
         async
           ..elapse(const Duration(seconds: 11))
           ..flushMicrotasks();
-        s.send([jRef, pushRef, 'room:lobby', 'phx_reply',
-            {'status': 'ok', 'response': <String, dynamic>{}}]);
+        s.send([
+          jRef,
+          pushRef,
+          'room:lobby',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
         async.flushMicrotasks();
 
         // Should NOT increment resultCount (completer was removed from _pendingRefs)
@@ -1491,11 +1757,14 @@ void main() {
       await socket.connect();
       await socket.disconnect();
 
-      expect(states, containsAllInOrder([
-        PhoenixSocketState.connecting,
-        PhoenixSocketState.connected,
-        PhoenixSocketState.disconnected,
-      ]));
+      expect(
+        states,
+        containsAllInOrder([
+          PhoenixSocketState.connecting,
+          PhoenixSocketState.connected,
+          PhoenixSocketState.disconnected,
+        ]),
+      );
     });
 
     test('62. socket state stream is broadcast (multiple listeners)', () async {
@@ -1512,24 +1781,33 @@ void main() {
       expect(a, equals(b));
     });
 
-    test('63. channel messages stream is broadcast (multiple listeners)', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
-      final joinRef = s.msgRef(s.sent.last);
+    test(
+      '63. channel messages stream is broadcast (multiple listeners)',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
+        final joinRef = s.msgRef(s.sent.last);
 
-      final a = <PhoenixMessage>[];
-      final b = <PhoenixMessage>[];
-      ch
-        ..messages.listen(a.add)
-        ..messages.listen(b.add);
-      s.send([joinRef, null, 'room:lobby', 'evt', {'x': 1}]);
-      await flush();
+        final a = <PhoenixMessage>[];
+        final b = <PhoenixMessage>[];
+        ch
+          ..messages.listen(a.add)
+          ..messages.listen(b.add);
+        s.send([
+          joinRef,
+          null,
+          'room:lobby',
+          'evt',
+          {'x': 1},
+        ]);
+        await flush();
 
-      expect(a, hasLength(1));
-      expect(b, hasLength(1));
-      await s.socket.disconnect();
-    });
+        expect(a, hasLength(1));
+        expect(b, hasLength(1));
+        await s.socket.disconnect();
+      },
+    );
 
     test('64. push before join() throws StateError immediately', () async {
       final s = NetSetup()..init();
@@ -1545,9 +1823,7 @@ void main() {
       final ch = s.socket.channel('room:lobby');
       unawaited(ch.join().catchError((_) => <String, dynamic>{}));
       await flush();
-      expect(
-          ch.join,
-          throwsStateError);
+      expect(ch.join, throwsStateError);
       await s.socket.disconnect();
     });
   });
@@ -1565,14 +1841,19 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('67. server sends JSON object (not array) — silently ignored', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      s.server.sink.add(jsonEncode({'event': 'hello', 'topic': 'room:lobby'}));
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '67. server sends JSON object (not array) — silently ignored',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        s.server.sink.add(
+          jsonEncode({'event': 'hello', 'topic': 'room:lobby'}),
+        );
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
 
     test('68. server sends JSON number — silently ignored', () async {
       final s = NetSetup()..init();
@@ -1601,54 +1882,73 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('71. server sends 4-element array (wrong length) — silently ignored',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      s.server.sink.add(jsonEncode(['a', 'b', 'c', 'd']));
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '71. server sends 4-element array (wrong length) — silently ignored',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        s.server.sink.add(jsonEncode(['a', 'b', 'c', 'd']));
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
 
-    test('72. server sends 6-element array (wrong length) — silently ignored',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      s.server.sink.add(jsonEncode(['a', 'b', 'c', 'd', <String, dynamic>{}, 'extra']));
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '72. server sends 6-element array (wrong length) — silently ignored',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        s.server.sink.add(
+          jsonEncode(['a', 'b', 'c', 'd', <String, dynamic>{}, 'extra']),
+        );
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
 
-    test('73. server sends message with null topic — silently ignored', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      s.server.sink.add(jsonEncode([null, '1', null, 'event', <String, dynamic>{}]));
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '73. server sends message with null topic — silently ignored',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        s.server.sink.add(
+          jsonEncode([null, '1', null, 'event', <String, dynamic>{}]),
+        );
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
 
-    test('74. server sends message with null event — silently ignored', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      s.server.sink.add(jsonEncode([null, '1', 'room:lobby', null, <String, dynamic>{}]));
-      await flush();
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '74. server sends message with null event — silently ignored',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        s.server.sink.add(
+          jsonEncode([null, '1', 'room:lobby', null, <String, dynamic>{}]),
+        );
+        await flush();
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
 
-    test('75. rapid burst of malformed messages does not degrade state', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      for (var i = 0; i < 50; i++) {
-        s.server.sink.add('junk_$i');
-      }
-      await flush(8);
-      expect(s.socket.state, PhoenixSocketState.connected);
-      await s.socket.disconnect();
-    });
+    test(
+      '75. rapid burst of malformed messages does not degrade state',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        for (var i = 0; i < 50; i++) {
+          s.server.sink.add('junk_$i');
+        }
+        await flush(8);
+        expect(s.socket.state, PhoenixSocketState.connected);
+        await s.socket.disconnect();
+      },
+    );
   });
 
   // =========================================================================
@@ -1719,8 +2019,14 @@ void main() {
             final ws = FakeWebSocketChannel();
             if (count == 1) {
               // Inject a stream error on first connection
-              unawaited(Future.microtask(() => ws.server.sink.addError(
-                  Exception('stream error'), StackTrace.empty)));
+              unawaited(
+                Future.microtask(
+                  () => ws.server.sink.addError(
+                    Exception('stream error'),
+                    StackTrace.empty,
+                  ),
+                ),
+              );
             }
             return ws;
           },
@@ -1768,45 +2074,57 @@ void main() {
       });
     });
 
-    test('80. socket state is never connected if never successfully connects',
-        () {
-      fakeAsync((async) {
-        final socket = PhoenixSocket(
-          'ws://localhost:4000/socket/websocket',
-          channelFactory: (uri) => throw Exception('always fails'),
-        );
+    test(
+      '80. socket state is never connected if never successfully connects',
+      () {
+        fakeAsync((async) {
+          final socket = PhoenixSocket(
+            'ws://localhost:4000/socket/websocket',
+            channelFactory: (uri) => throw Exception('always fails'),
+          );
 
-        unawaited(socket.connect());
-        async.flushMicrotasks();
-        expect(socket.state,
-            isIn([PhoenixSocketState.reconnecting,
-                  PhoenixSocketState.disconnected]));
-        expect(socket.state, isNot(PhoenixSocketState.connected));
+          unawaited(socket.connect());
+          async.flushMicrotasks();
+          expect(
+            socket.state,
+            isIn([
+              PhoenixSocketState.reconnecting,
+              PhoenixSocketState.disconnected,
+            ]),
+          );
+          expect(socket.state, isNot(PhoenixSocketState.connected));
 
-        unawaited(socket.disconnect());
-        async.flushMicrotasks();
-      });
-    });
+          unawaited(socket.disconnect());
+          async.flushMicrotasks();
+        });
+      },
+    );
   });
 
   // =========================================================================
   // Group 13: Join / leave lifecycle
   // =========================================================================
   group('Join / leave lifecycle', () {
-    test('81. join with payload — payload included in phx_join message', () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = s.socket.channel('room:lobby');
-      unawaited(ch.join(payload: {'token': 'secret', 'user_id': 42})
-          .catchError((_) => <String, dynamic>{}));
-      await flush();
+    test(
+      '81. join with payload — payload included in phx_join message',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = s.socket.channel('room:lobby');
+        unawaited(
+          ch
+              .join(payload: {'token': 'secret', 'user_id': 42})
+              .catchError((_) => <String, dynamic>{}),
+        );
+        await flush();
 
-      final msg = jsonDecode(s.sent.last as String) as List;
-      final payload = (msg[4] as Map).cast<String, dynamic>();
-      expect(payload['token'], 'secret');
-      expect(payload['user_id'], 42);
-      await s.socket.disconnect();
-    });
+        final msg = jsonDecode(s.sent.last as String) as List;
+        final payload = (msg[4] as Map).cast<String, dynamic>();
+        expect(payload['token'], 'secret');
+        expect(payload['user_id'], 42);
+        await s.socket.disconnect();
+      },
+    );
 
     test('82. channel.leave() while already closed is a no-op', () async {
       final s = NetSetup()..init();
@@ -1825,10 +2143,12 @@ void main() {
       final ch = s.socket.channel('room:lobby');
 
       Object? joinError;
-      unawaited(ch.join().catchError((Object e) {
-        joinError = e;
-        return <String, dynamic>{};
-      }));
+      unawaited(
+        ch.join().catchError((Object e) {
+          joinError = e;
+          return <String, dynamic>{};
+        }),
+      );
       await flush();
       expect(ch.state, PhoenixChannelState.joining);
 
@@ -1855,8 +2175,13 @@ void main() {
       // Reply to leave
       final leaveRef = leaveMsg[1] as String;
       final leaveJoinRef = leaveMsg[0] as String;
-      s.send([leaveJoinRef, leaveRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      s.send([
+        leaveJoinRef,
+        leaveRef,
+        'room:lobby',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await leaveFuture;
       expect(ch.state, PhoenixChannelState.closed);
       await s.socket.disconnect();
@@ -1919,14 +2244,24 @@ void main() {
       final joinRef = s.msgRef(s.sent.last);
 
       PhoenixException? err;
-      unawaited(ch.push('risky', {}).catchError((Object e) {
-        err = e as PhoenixException;
-        return <String, dynamic>{};
-      }));
+      unawaited(
+        ch.push('risky', {}).catchError((Object e) {
+          err = e as PhoenixException;
+          return <String, dynamic>{};
+        }),
+      );
       await flush();
       final pushRef = s.msgRef(s.sent.last);
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'error', 'response': {'reason': 'unauthorized'}}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {
+          'status': 'error',
+          'response': {'reason': 'unauthorized'},
+        },
+      ]);
       await flush();
 
       expect(err, isNotNull);
@@ -1941,14 +2276,21 @@ void main() {
       final joinRef = s.msgRef(s.sent.last);
 
       Object? err;
-      unawaited(ch.push('action', {}).catchError((Object e) {
-        err = e;
-        return <String, dynamic>{};
-      }));
+      unawaited(
+        ch.push('action', {}).catchError((Object e) {
+          err = e;
+          return <String, dynamic>{};
+        }),
+      );
       await flush();
       final pushRef = s.msgRef(s.sent.last);
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'forbidden', 'response': <String, dynamic>{}}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {'status': 'forbidden', 'response': <String, dynamic>{}},
+      ]);
       await flush();
 
       expect(err, isA<PhoenixException>());
@@ -1998,17 +2340,29 @@ void main() {
 
       var succeeded = false;
       var failed = false;
-      unawaited(ch.push('msg', {}).then((_) {
-        succeeded = true;
-      }, onError: (_) {
-        failed = true;
-      }));
+      unawaited(
+        ch
+            .push('msg', {})
+            .then(
+              (_) {
+                succeeded = true;
+              },
+              onError: (_) {
+                failed = true;
+              },
+            ),
+      );
       await flush();
       final pushRef = s.msgRef(s.sent.last);
 
       // Send reply AND disconnect simultaneously
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       ch.onSocketDisconnect();
       await flush(6);
 
@@ -2023,46 +2377,48 @@ void main() {
   // Group 15: Special network patterns
   // =========================================================================
   group('Special network patterns', () {
-    test('93. socket recovers from transient network blip (auto-reconnect)', () {
-      fakeAsync((async) {
-        var connects = 0;
-        FakeWebSocketChannel? latestWs;
+    test(
+      '93. socket recovers from transient network blip (auto-reconnect)',
+      () {
+        fakeAsync((async) {
+          var connects = 0;
+          FakeWebSocketChannel? latestWs;
 
-        final socket = PhoenixSocket(
-          'ws://localhost:4000/socket/websocket',
-          channelFactory: (uri) {
-            connects++;
-            latestWs = FakeWebSocketChannel();
-            return latestWs!;
-          },
-        );
+          final socket = PhoenixSocket(
+            'ws://localhost:4000/socket/websocket',
+            channelFactory: (uri) {
+              connects++;
+              latestWs = FakeWebSocketChannel();
+              return latestWs!;
+            },
+          );
 
-        unawaited(socket.connect());
-        async.flushMicrotasks();
-        expect(socket.state, PhoenixSocketState.connected);
-        expect(connects, 1);
+          unawaited(socket.connect());
+          async.flushMicrotasks();
+          expect(socket.state, PhoenixSocketState.connected);
+          expect(connects, 1);
 
-        // Simulate brief network blip: server closes the connection
-        unawaited(latestWs!.server.sink.close());
-        async.flushMicrotasks();
-        expect(socket.state, PhoenixSocketState.reconnecting);
+          // Simulate brief network blip: server closes the connection
+          unawaited(latestWs!.server.sink.close());
+          async.flushMicrotasks();
+          expect(socket.state, PhoenixSocketState.reconnecting);
 
-        // Socket auto-reconnects after 1s backoff
-        async
-          ..elapse(const Duration(seconds: 1))
-          ..flushMicrotasks();
-        expect(socket.state, PhoenixSocketState.connected);
-        expect(connects, 2);
+          // Socket auto-reconnects after 1s backoff
+          async
+            ..elapse(const Duration(seconds: 1))
+            ..flushMicrotasks();
+          expect(socket.state, PhoenixSocketState.connected);
+          expect(connects, 2);
 
-        unawaited(socket.disconnect());
-        async.flushMicrotasks();
-      });
-    });
+          unawaited(socket.disconnect());
+          async.flushMicrotasks();
+        });
+      },
+    );
 
     test('94. multiple socket instances are independent', () async {
       final sA = NetSetup()..init();
-      final sB = NetSetup()
-        ..init(url: 'ws://localhost:4001/socket/websocket');
+      final sB = NetSetup()..init(url: 'ws://localhost:4001/socket/websocket');
 
       await sA.connect();
       await sB.connect();
@@ -2080,35 +2436,37 @@ void main() {
       await sB.socket.disconnect();
     });
 
-    test('95. socket handles interleaved join and push replies correctly',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
+    test(
+      '95. socket handles interleaved join and push replies correctly',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
 
-      final ch1 = s.socket.channel('room:1');
-      final ch2 = s.socket.channel('room:2');
+        final ch1 = s.socket.channel('room:1');
+        final ch2 = s.socket.channel('room:2');
 
-      final f1 = ch1.join();
-      await flush();
-      final ref1 = s.msgRef(s.sent.last);
+        final f1 = ch1.join();
+        await flush();
+        final ref1 = s.msgRef(s.sent.last);
 
-      final f2 = ch2.join();
-      await flush();
-      final ref2 = s.msgRef(s.sent.last);
+        final f2 = ch2.join();
+        await flush();
+        final ref2 = s.msgRef(s.sent.last);
 
-      // Reply to ch2 first, then ch1
-      s.replyJoinOk(ref2, 'room:2');
-      await flush();
-      s.replyJoinOk(ref1, 'room:1');
-      await flush();
+        // Reply to ch2 first, then ch1
+        s.replyJoinOk(ref2, 'room:2');
+        await flush();
+        s.replyJoinOk(ref1, 'room:1');
+        await flush();
 
-      await f1;
-      await f2;
+        await f1;
+        await f2;
 
-      expect(ch1.state, PhoenixChannelState.joined);
-      expect(ch2.state, PhoenixChannelState.joined);
-      await s.socket.disconnect();
-    });
+        expect(ch1.state, PhoenixChannelState.joined);
+        expect(ch2.state, PhoenixChannelState.joined);
+        await s.socket.disconnect();
+      },
+    );
 
     test('96. channel push reply during reconnect phase is ignored', () async {
       final s = NetSetup()..init();
@@ -2117,10 +2475,12 @@ void main() {
       final joinRef = s.msgRef(s.sent.last);
 
       Object? err;
-      unawaited(ch.push('msg', {}).catchError((Object e) {
-        err = e;
-        return <String, dynamic>{};
-      }));
+      unawaited(
+        ch.push('msg', {}).catchError((Object e) {
+          err = e;
+          return <String, dynamic>{};
+        }),
+      );
       await flush();
       final pushRef = s.msgRef(s.sent.last);
 
@@ -2130,8 +2490,13 @@ void main() {
       expect(err, isNotNull); // push errored
 
       // Late reply arrives (would be for old connection)
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
+      s.send([
+        joinRef,
+        pushRef,
+        'room:lobby',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await flush();
 
       // No crash, no double completion
@@ -2139,76 +2504,97 @@ void main() {
       await s.socket.disconnect();
     });
 
-    test('97. server sends duplicate reply for same ref — second is ignored',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final ch = await s.joinedChannel('room:lobby');
-      final joinRef = s.msgRef(s.sent.last);
+    test(
+      '97. server sends duplicate reply for same ref — second is ignored',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final ch = await s.joinedChannel('room:lobby');
+        final joinRef = s.msgRef(s.sent.last);
 
-      var completions = 0;
-      unawaited(ch.push('msg', {}).then((_) => completions++));
-      await flush();
-      final pushRef = s.msgRef(s.sent.last);
+        var completions = 0;
+        unawaited(ch.push('msg', {}).then((_) => completions++));
+        await flush();
+        final pushRef = s.msgRef(s.sent.last);
 
-      // First reply
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
-      await flush();
-      expect(completions, 1);
+        // First reply
+        s.send([
+          joinRef,
+          pushRef,
+          'room:lobby',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
+        await flush();
+        expect(completions, 1);
 
-      // Duplicate reply (same ref)
-      s.send([joinRef, pushRef, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}]);
-      await flush();
+        // Duplicate reply (same ref)
+        s.send([
+          joinRef,
+          pushRef,
+          'room:lobby',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ]);
+        await flush();
 
-      // Should still be 1 — completer was removed after first completion
-      expect(completions, 1);
-      await s.socket.disconnect();
-    });
-
-    test('98. channel receives messages while another channel is joining',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      final chA = await s.joinedChannel('room:a');
-      final joinRefA = s.msgRef(s.sent.last);
-
-      // Start joining chB — but don't complete yet
-      final chB = s.socket.channel('room:b');
-      unawaited(chB.join().catchError((_) => <String, dynamic>{}));
-      await flush();
-
-      // chA receives a message while chB is still joining
-      final msgs = <PhoenixMessage>[];
-      chA.messages.listen(msgs.add);
-      s.send([joinRefA, null, 'room:a', 'event', {'data': 'hello'}]);
-      await flush();
-
-      expect(msgs, hasLength(1));
-      expect(msgs.first.payload['data'], 'hello');
-
-      // Clean up — complete chB join or let it timeout
-      final refB = s.msgRef(s.sent.last);
-      s.replyJoinOk(refB, 'room:b');
-      await flush();
-
-      await s.socket.disconnect();
-    });
-
-    test('99. socket.channel() called after disconnect still returns channel',
-        () async {
-      final s = NetSetup()..init();
-      await s.connect();
-      await s.socket.disconnect();
-
-      // Should not throw — just returns/creates a channel object
-      final ch = s.socket.channel('room:lobby');
-      expect(ch, isNotNull);
-    });
+        // Should still be 1 — completer was removed after first completion
+        expect(completions, 1);
+        await s.socket.disconnect();
+      },
+    );
 
     test(
-        '100. full end-to-end: connect, join, push, receive broadcast, '
+      '98. channel receives messages while another channel is joining',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        final chA = await s.joinedChannel('room:a');
+        final joinRefA = s.msgRef(s.sent.last);
+
+        // Start joining chB — but don't complete yet
+        final chB = s.socket.channel('room:b');
+        unawaited(chB.join().catchError((_) => <String, dynamic>{}));
+        await flush();
+
+        // chA receives a message while chB is still joining
+        final msgs = <PhoenixMessage>[];
+        chA.messages.listen(msgs.add);
+        s.send([
+          joinRefA,
+          null,
+          'room:a',
+          'event',
+          {'data': 'hello'},
+        ]);
+        await flush();
+
+        expect(msgs, hasLength(1));
+        expect(msgs.first.payload['data'], 'hello');
+
+        // Clean up — complete chB join or let it timeout
+        final refB = s.msgRef(s.sent.last);
+        s.replyJoinOk(refB, 'room:b');
+        await flush();
+
+        await s.socket.disconnect();
+      },
+    );
+
+    test(
+      '99. socket.channel() called after disconnect still returns channel',
+      () async {
+        final s = NetSetup()..init();
+        await s.connect();
+        await s.socket.disconnect();
+
+        // Should not throw — just returns/creates a channel object
+        final ch = s.socket.channel('room:lobby');
+        expect(ch, isNotNull);
+      },
+    );
+
+    test('100. full end-to-end: connect, join, push, receive broadcast, '
         'network drop, rejoin, push again', () async {
       final s = NetSetup()..init();
       await s.connect();
@@ -2220,15 +2606,29 @@ void main() {
       unawaited(ch.push('action', {'v': 1}).then((r) => r1 = r));
       await flush();
       final pRef1 = s.msgRef(s.sent.last);
-      s.send([joinRef1, pRef1, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': {'v': 1}}]);
+      s.send([
+        joinRef1,
+        pRef1,
+        'room:lobby',
+        'phx_reply',
+        {
+          'status': 'ok',
+          'response': {'v': 1},
+        },
+      ]);
       await flush();
       expect(r1?['v'], 1);
 
       // Receive broadcast
       final broadcasts = <PhoenixMessage>[];
       ch.messages.listen(broadcasts.add);
-      s.send([joinRef1, null, 'room:lobby', 'update', {'n': 99}]);
+      s.send([
+        joinRef1,
+        null,
+        'room:lobby',
+        'update',
+        {'n': 99},
+      ]);
       await flush();
       expect(broadcasts, hasLength(1));
 
@@ -2249,8 +2649,16 @@ void main() {
       unawaited(ch.push('action', {'v': 2}).then((r) => r2 = r));
       await flush();
       final pRef2 = s.msgRef(s.sent.last);
-      s.send([joinRef2, pRef2, 'room:lobby', 'phx_reply',
-          {'status': 'ok', 'response': {'v': 2}}]);
+      s.send([
+        joinRef2,
+        pRef2,
+        'room:lobby',
+        'phx_reply',
+        {
+          'status': 'ok',
+          'response': {'v': 2},
+        },
+      ]);
       await flush();
       expect(r2?['v'], 2);
 

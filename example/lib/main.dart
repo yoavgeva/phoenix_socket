@@ -328,10 +328,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final notifier =
-        ChangeNotifierProvider.of<ChatRoomNotifier>(context);
-    final socket =
-        ChangeNotifierProvider.of<PhoenixSocketManager>(context);
+    final notifier = ChangeNotifierProvider.of<ChatRoomNotifier>(context);
+    final socket = ChangeNotifierProvider.of<PhoenixSocketManager>(context);
 
     return Scaffold(
       appBar: AppBar(

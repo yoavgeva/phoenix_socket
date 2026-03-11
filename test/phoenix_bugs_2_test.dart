@@ -61,22 +61,45 @@ class T {
   String topicOf(dynamic raw) =>
       (jsonDecode(raw as String) as List)[2] as String;
 
-  void replyOk(String jr, String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
-    toClient([jr, r, t, 'phx_reply', {'status': 'ok', 'response': resp}]);
+  void replyOk(
+    String jr,
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    toClient([
+      jr,
+      r,
+      t,
+      'phx_reply',
+      {'status': 'ok', 'response': resp},
+    ]);
   }
 
-  void replyErr(String jr, String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
-    toClient([jr, r, t, 'phx_reply', {'status': 'error', 'response': resp}]);
+  void replyErr(
+    String jr,
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
+    toClient([
+      jr,
+      r,
+      t,
+      'phx_reply',
+      {'status': 'error', 'response': resp},
+    ]);
   }
 
   void replyJoinOk(String r, String t, [Map<String, dynamic> resp = const {}]) {
     replyOk(r, r, t, resp);
   }
 
-  void replyJoinErr(String r, String t,
-      [Map<String, dynamic> resp = const {}]) {
+  void replyJoinErr(
+    String r,
+    String t, [
+    Map<String, dynamic> resp = const {},
+  ]) {
     replyErr(r, r, t, resp);
   }
 }
@@ -117,10 +140,12 @@ void main() {
       // Buffer a push before join completes
       var pushResult = <String, dynamic>{};
       var pushDone = false;
-      unawaited(ch.push('event_a', {'v': 42}).then((r) {
-        pushResult = r;
-        pushDone = true;
-      }));
+      unawaited(
+        ch.push('event_a', {'v': 42}).then((r) {
+          pushResult = r;
+          pushDone = true;
+        }),
+      );
       await flush();
 
       // Push not yet sent
@@ -165,8 +190,7 @@ void main() {
 
       // All 3 pushes sent — reply to each
       for (var i = 0; i < 3; i++) {
-        final msgs =
-            t.sent.where((m) => t.evnt(m) == 'msg_$i').toList();
+        final msgs = t.sent.where((m) => t.evnt(m) == 'msg_$i').toList();
         expect(msgs, hasLength(1));
         final pRef = t.ref(msgs.first);
         final pJRef = t.jRef(msgs.first);
@@ -204,8 +228,7 @@ void main() {
         expect(ch.state, PhoenixChannelState.closed);
 
         // Server should have received a phx_leave
-        final leaves =
-            t.sent.where((m) => t.evnt(m) == 'phx_leave').toList();
+        final leaves = t.sent.where((m) => t.evnt(m) == 'phx_leave').toList();
         expect(leaves, isNotEmpty);
       });
     });
@@ -216,7 +239,14 @@ void main() {
 
       final ch = t.socket.channel('room:join_leave2');
       var joinErrored = false;
-      unawaited(ch.join().then((_) {}, onError: (_) { joinErrored = true; }));
+      unawaited(
+        ch.join().then(
+          (_) {},
+          onError: (_) {
+            joinErrored = true;
+          },
+        ),
+      );
       await flush();
 
       await ch.leave();
@@ -230,33 +260,35 @@ void main() {
   // Bug: Phoenix.js #4616 — disconnect() during reconnecting stops all retries
   // =========================================================================
   group('disconnect() cancels reconnect timer (Phoenix.js #4616)', () {
-    test('5. disconnect() during reconnect backoff — no further connect calls',
-        () {
-      fakeAsync((async) {
-        final t = T()..init();
-        unawaited(t.socket.connect().then((_) {}, onError: (_) {}));
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        final connectsBefore = t.connects;
+    test(
+      '5. disconnect() during reconnect backoff — no further connect calls',
+      () {
+        fakeAsync((async) {
+          final t = T()..init();
+          unawaited(t.socket.connect().then((_) {}, onError: (_) {}));
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          final connectsBefore = t.connects;
 
-        // Drop connection → schedules reconnect in 1s
-        t.drop();
-        async
-          ..flushMicrotasks()
-          ..flushMicrotasks();
-        expect(t.socket.state, PhoenixSocketState.reconnecting);
+          // Drop connection → schedules reconnect in 1s
+          t.drop();
+          async
+            ..flushMicrotasks()
+            ..flushMicrotasks();
+          expect(t.socket.state, PhoenixSocketState.reconnecting);
 
-        // Disconnect before the 1s reconnect timer fires
-        unawaited(t.socket.disconnect());
-        async
-          ..flushMicrotasks()
-          ..elapse(const Duration(seconds: 60));
-        expect(t.connects, connectsBefore);
-        expect(t.socket.state, PhoenixSocketState.disconnected);
-      });
-    });
+          // Disconnect before the 1s reconnect timer fires
+          unawaited(t.socket.disconnect());
+          async
+            ..flushMicrotasks()
+            ..elapse(const Duration(seconds: 60));
+          expect(t.connects, connectsBefore);
+          expect(t.socket.state, PhoenixSocketState.disconnected);
+        });
+      },
+    );
 
     test('6. disconnect() then connect() — reconnects cleanly', () async {
       final t = T()..init();
@@ -381,45 +413,46 @@ void main() {
   // After socket.disconnect() + socket.connect(), channels must rejoin.
   // =========================================================================
   group(
-      'Client disconnect transitions channels to errored (Phoenix.js #3669)',
-      () {
-    test(
-        '10. disconnect+connect → channel rejoins automatically',
+    'Client disconnect transitions channels to errored (Phoenix.js #3669)',
+    () {
+      test('10. disconnect+connect → channel rejoins automatically', () async {
+        final t = T()..init();
+        await t.connect();
+
+        // Join a channel
+        final ch = await joinedChannel(t, 'room:dc_rejoin');
+        expect(ch.state, PhoenixChannelState.joined);
+
+        // Client-side intentional disconnect → channel goes closed (not errored)
+        await t.socket.disconnect();
+        expect(ch.state, PhoenixChannelState.closed);
+
+        // Reconnect — channels in closed state are NOT auto-rejoined
+        // (intentional disconnects mean the user chose to leave)
+        await t.connect();
+        await flush(6);
+
+        // Only the original join — no auto-rejoin for intentionally-closed channels
+        final joins = t.sent.where((m) => t.evnt(m) == 'phx_join').toList();
+        expect(joins.length, 1);
+      });
+
+      test(
+        '11. channel state is errored (not joined) after client disconnect',
         () async {
-      final t = T()..init();
-      await t.connect();
+          final t = T()..init();
+          await t.connect();
 
-      // Join a channel
-      final ch = await joinedChannel(t, 'room:dc_rejoin');
-      expect(ch.state, PhoenixChannelState.joined);
+          final ch = await joinedChannel(t, 'room:dc_state');
+          expect(ch.state, PhoenixChannelState.joined);
 
-      // Client-side intentional disconnect → channel goes closed (not errored)
-      await t.socket.disconnect();
-      expect(ch.state, PhoenixChannelState.closed);
+          await t.socket.disconnect();
 
-      // Reconnect — channels in closed state are NOT auto-rejoined
-      // (intentional disconnects mean the user chose to leave)
-      await t.connect();
-      await flush(6);
-
-      // Only the original join — no auto-rejoin for intentionally-closed channels
-      final joins = t.sent.where((m) => t.evnt(m) == 'phx_join').toList();
-      expect(joins.length, 1);
-    });
-
-    test('11. channel state is errored (not joined) after client disconnect',
-        () async {
-      final t = T()..init();
-      await t.connect();
-
-      final ch = await joinedChannel(t, 'room:dc_state');
-      expect(ch.state, PhoenixChannelState.joined);
-
-      await t.socket.disconnect();
-
-      expect(ch.state, isNot(PhoenixChannelState.joined));
-    });
-  });
+          expect(ch.state, isNot(PhoenixChannelState.joined));
+        },
+      );
+    },
+  );
 
   // =========================================================================
   // Bug: Phoenix.js #3161 — heartbeat timeout close must trigger reconnect
@@ -440,8 +473,9 @@ void main() {
         async
           ..elapse(const Duration(seconds: 30))
           ..flushMicrotasks();
-        final heartbeats =
-            t.sent.where((m) => t.evnt(m) == 'heartbeat').toList();
+        final heartbeats = t.sent
+            .where((m) => t.evnt(m) == 'heartbeat')
+            .toList();
         expect(heartbeats, isNotEmpty);
 
         // Second tick at 60s — pending heartbeat ref → trigger reconnect
@@ -499,63 +533,73 @@ void main() {
   // On socket reconnect, a server-closed channel must NOT auto-rejoin —
   // that would flood the server with unauthorized joins.
   // =========================================================================
-  group('phx_close prevents auto-rejoin after reconnect (Phoenix.js #2251)',
-      () {
-    test('14. server phx_close → channel closed, does not rejoin on reconnect',
+  group(
+    'phx_close prevents auto-rejoin after reconnect (Phoenix.js #2251)',
+    () {
+      test(
+        '14. server phx_close → channel closed, does not rejoin on reconnect',
         () async {
-      final t = T()..init();
-      await t.connect();
+          final t = T()..init();
+          await t.connect();
 
-      final ch = await joinedChannel(t, 'room:server_close');
-      final joinRef = t.jRef(t.sent.last);
+          final ch = await joinedChannel(t, 'room:server_close');
+          final joinRef = t.jRef(t.sent.last);
 
-      // Server sends phx_close
-      t.toClient([joinRef, null, 'room:server_close', 'phx_close', {}]);
-      await flush(4);
+          // Server sends phx_close
+          t.toClient([joinRef, null, 'room:server_close', 'phx_close', {}]);
+          await flush(4);
 
-      expect(ch.state, PhoenixChannelState.closed);
+          expect(ch.state, PhoenixChannelState.closed);
 
-      // Simulate disconnect + reconnect
-      t.drop();
-      await flush(4);
+          // Simulate disconnect + reconnect
+          t.drop();
+          await flush(4);
 
-      // Advance reconnect backoff
-      await Future.delayed(const Duration(seconds: 2));
-      await flush(4);
+          // Advance reconnect backoff
+          await Future.delayed(const Duration(seconds: 2));
+          await flush(4);
 
-      // No new phx_join for the closed channel
-      final joins = t.sent.where((m) => t.evnt(m) == 'phx_join').toList();
-      // Only the original join, no additional
-      expect(joins.length, 1);
-    });
+          // No new phx_join for the closed channel
+          final joins = t.sent.where((m) => t.evnt(m) == 'phx_join').toList();
+          // Only the original join, no additional
+          expect(joins.length, 1);
+        },
+      );
 
-    test('15. server phx_close on joining channel — future errors', () async {
-      final t = T()..init();
-      await t.connect();
+      test('15. server phx_close on joining channel — future errors', () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = t.socket.channel('room:close_during_join');
-      var joinErrored = false;
-      unawaited(ch.join().then((_) {}, onError: (_) { joinErrored = true; }));
-      await flush();
+        final ch = t.socket.channel('room:close_during_join');
+        var joinErrored = false;
+        unawaited(
+          ch.join().then(
+            (_) {},
+            onError: (_) {
+              joinErrored = true;
+            },
+          ),
+        );
+        await flush();
 
-      final r = t.ref(t.sent.last);
+        final r = t.ref(t.sent.last);
 
-      // Server sends phx_close before join reply
-      t.toClient([r, null, 'room:close_during_join', 'phx_close', {}]);
-      await flush(4);
+        // Server sends phx_close before join reply
+        t.toClient([r, null, 'room:close_during_join', 'phx_close', {}]);
+        await flush(4);
 
-      expect(joinErrored, isTrue);
-      expect(ch.state, PhoenixChannelState.closed);
-    });
-  });
+        expect(joinErrored, isTrue);
+        expect(ch.state, PhoenixChannelState.closed);
+      });
+    },
+  );
 
   // =========================================================================
   // Bug: Dart SDK #32519 — no unhandled StateError during reconnect window
   // If the heartbeat/send fires while the old WS is closed and new WS is not
   // yet up, the sink.add() must not throw an unhandled exception.
   // =========================================================================
-  group('No unhandled StateError during reconnect window (Dart SDK #32519)',
-      () {
+  group('No unhandled StateError during reconnect window (Dart SDK #32519)', () {
     test('16. send() while disconnected — no exception propagates', () async {
       final t = T()..init();
       await t.connect();
@@ -565,13 +609,15 @@ void main() {
       // socket is now reconnecting / disconnected
       // Calling send-level push should not crash
       expect(
-        () => t.socket.send(const PhoenixMessage(
-          joinRef: null,
-          ref: '999',
-          topic: 'phoenix',
-          event: 'heartbeat',
-          payload: {},
-        )),
+        () => t.socket.send(
+          const PhoenixMessage(
+            joinRef: null,
+            ref: '999',
+            topic: 'phoenix',
+            event: 'heartbeat',
+            payload: {},
+          ),
+        ),
         returnsNormally,
       );
     });
@@ -601,8 +647,7 @@ void main() {
   // Bug: braverhearts/phoenix-socket-dart #6/#34 — backoff list progresses
   // Each failed reconnect must use the next delay, not the same one forever.
   // =========================================================================
-  group(
-      'Reconnect backoff progresses through delays (braverhealth #6/#34)', () {
+  group('Reconnect backoff progresses through delays (braverhealth #6/#34)', () {
     test('18. consecutive connect-refused failures use increasing delays', () {
       fakeAsync((async) {
         // Factory throws on connect (connection refused — never reaches ready)
@@ -744,8 +789,10 @@ void main() {
           ..flushMicrotasks()
           ..flushMicrotasks();
         final joins = t.sent
-            .where((m) => t.evnt(m) == 'phx_join' &&
-                t.topicOf(m) == 'room:stale_ref')
+            .where(
+              (m) =>
+                  t.evnt(m) == 'phx_join' && t.topicOf(m) == 'room:stale_ref',
+            )
             .toList();
         expect(joins.length, 2); // original + rejoin
 
@@ -774,9 +821,13 @@ void main() {
       final joinRef = t.jRef(t.sent.last);
 
       // Server sends a reply for a ref that the client never sent
-      t.toClient(
-          [joinRef, '9999', 'room:unknown_ref', 'phx_reply',
-           {'status': 'ok', 'response': <String, dynamic>{}}]);
+      t.toClient([
+        joinRef,
+        '9999',
+        'room:unknown_ref',
+        'phx_reply',
+        {'status': 'ok', 'response': <String, dynamic>{}},
+      ]);
       await flush(4);
 
       // Channel must still be in joined state — no crash
@@ -796,25 +847,39 @@ void main() {
       expect(ch.state, PhoenixChannelState.errored);
     });
 
-    test('23. push reply with error status rejects with PhoenixException',
-        () async {
-      final t = T()..init();
-      await t.connect();
+    test(
+      '23. push reply with error status rejects with PhoenixException',
+      () async {
+        final t = T()..init();
+        await t.connect();
 
-      final ch = await joinedChannel(t, 'room:push_error');
-      final joinRef = t.jRef(t.sent.last);
+        final ch = await joinedChannel(t, 'room:push_error');
+        final joinRef = t.jRef(t.sent.last);
 
-      Object? caught;
-      unawaited(ch.push('fail_event', {}).then((_) {}, onError: (e) { caught = e; }));
-      await flush(4);
+        Object? caught;
+        unawaited(
+          ch
+              .push('fail_event', {})
+              .then(
+                (_) {},
+                onError: (e) {
+                  caught = e;
+                },
+              ),
+        );
+        await flush(4);
 
-      final pushRef =
-          t.ref(t.sent.where((m) => t.evnt(m) == 'fail_event').last);
-      t.replyErr(joinRef, pushRef, 'room:push_error', {'reason': 'forbidden'});
-      await flush(4);
+        final pushRef = t.ref(
+          t.sent.where((m) => t.evnt(m) == 'fail_event').last,
+        );
+        t.replyErr(joinRef, pushRef, 'room:push_error', {
+          'reason': 'forbidden',
+        });
+        await flush(4);
 
-      expect(caught, isA<PhoenixException>());
-    });
+        expect(caught, isA<PhoenixException>());
+      },
+    );
 
     test('24. channel messages stream only receives app events', () async {
       final t = T()..init();
@@ -828,8 +893,13 @@ void main() {
 
       // Control events — must not appear on messages stream
       t
-        ..toClient([joinRef, '1', 'room:events_filter', 'phx_reply',
-            {'status': 'ok', 'response': <String, dynamic>{}}])
+        ..toClient([
+          joinRef,
+          '1',
+          'room:events_filter',
+          'phx_reply',
+          {'status': 'ok', 'response': <String, dynamic>{}},
+        ])
         ..toClient([joinRef, null, 'room:events_filter', 'phx_close', {}]);
       await flush(4);
 
@@ -840,8 +910,13 @@ void main() {
       final joinRef2 = t.jRef(t.sent.last);
 
       // App event — must appear
-      t.toClient([joinRef2, null, 'room:events_filter2', 'new_msg',
-          {'body': 'hello'}]);
+      t.toClient([
+        joinRef2,
+        null,
+        'room:events_filter2',
+        'new_msg',
+        {'body': 'hello'},
+      ]);
       await flush(4);
 
       expect(received.where((m) => m.event == 'phx_reply'), isEmpty);
@@ -855,7 +930,14 @@ void main() {
 
       final ch = t.socket.channel('room:join_err');
       Object? caught;
-      unawaited(ch.join().then((_) {}, onError: (e) { caught = e; }));
+      unawaited(
+        ch.join().then(
+          (_) {},
+          onError: (e) {
+            caught = e;
+          },
+        ),
+      );
       await flush(4);
 
       final r = t.ref(t.sent.last);

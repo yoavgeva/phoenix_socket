@@ -47,7 +47,6 @@ class FakeWebSocketChannel extends StreamChannelMixin<Object?>
 }
 
 class _FakeStreamSink implements StreamSink<dynamic> {
-
   _FakeStreamSink(this._controller);
   final StreamController<dynamic> _controller;
   final _doneCompleter = Completer<void>();
@@ -81,7 +80,6 @@ class _FakeStreamSink implements StreamSink<dynamic> {
 }
 
 class _FakeWebSocketSink implements WebSocketSink {
-
   _FakeWebSocketSink(this._toServer);
   final StreamController<dynamic> _toServer;
   final _doneCompleter = Completer<void>();

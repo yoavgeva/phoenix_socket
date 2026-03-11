@@ -53,22 +53,24 @@ void main() {
     });
 
     group('connect / disconnect', () {
-      test('connect() while already connected does not create second WS',
-          () async {
-        var connectCount = 0;
-        final socket = PhoenixSocket(
-          'ws://localhost:4000/socket/websocket',
-          channelFactory: (uri) {
-            connectCount++;
-            final (ws, _) = makeFakeWs();
-            return ws;
-          },
-        );
-        await socket.connect();
-        await socket.connect(); // second call should be no-op
-        expect(connectCount, 1);
-        await socket.disconnect();
-      });
+      test(
+        'connect() while already connected does not create second WS',
+        () async {
+          var connectCount = 0;
+          final socket = PhoenixSocket(
+            'ws://localhost:4000/socket/websocket',
+            channelFactory: (uri) {
+              connectCount++;
+              final (ws, _) = makeFakeWs();
+              return ws;
+            },
+          );
+          await socket.connect();
+          await socket.connect(); // second call should be no-op
+          expect(connectCount, 1);
+          await socket.disconnect();
+        },
+      );
 
       test('connect() after disconnect() reconnects', () async {
         var connectCount = 0;
@@ -87,26 +89,29 @@ void main() {
         await socket.disconnect();
       });
 
-      test('state transitions: disconnected → connecting → connected',
-          () async {
-        final states = <PhoenixSocketState>[];
-        final socket = PhoenixSocket(
-          'ws://localhost:4000/socket/websocket',
-          channelFactory: (uri) {
-            final (ws, _) = makeFakeWs();
-            return ws;
-          },
-        );
-        socket.states.listen(states.add);
-        await socket.connect();
-        expect(
+      test(
+        'state transitions: disconnected → connecting → connected',
+        () async {
+          final states = <PhoenixSocketState>[];
+          final socket = PhoenixSocket(
+            'ws://localhost:4000/socket/websocket',
+            channelFactory: (uri) {
+              final (ws, _) = makeFakeWs();
+              return ws;
+            },
+          );
+          socket.states.listen(states.add);
+          await socket.connect();
+          expect(
             states,
             containsAllInOrder([
               PhoenixSocketState.connecting,
               PhoenixSocketState.connected,
-            ]));
-        await socket.disconnect();
-      });
+            ]),
+          );
+          await socket.disconnect();
+        },
+      );
     });
 
     group('heartbeat', () {
@@ -164,13 +169,15 @@ void main() {
           final heartbeatRef = heartbeatMsg[1] as String;
 
           // Reply to heartbeat
-          serverChannel!.sink.add(jsonEncode([
-            null,
-            heartbeatRef,
-            'phoenix',
-            'phx_reply',
-            {'status': 'ok', 'response': <String, dynamic>{}}
-          ]));
+          serverChannel!.sink.add(
+            jsonEncode([
+              null,
+              heartbeatRef,
+              'phoenix',
+              'phx_reply',
+              {'status': 'ok', 'response': <String, dynamic>{}},
+            ]),
+          );
           async
             ..flushMicrotasks()
             ..elapse(const Duration(seconds: 30));
@@ -291,8 +298,7 @@ void main() {
 
         // onSocketDisconnect only changes state if joined or joining
         // Channel starts as closed, so state stays closed
-        final ch = socket.channel('room:lobby')
-          ..onSocketDisconnect();
+        final ch = socket.channel('room:lobby')..onSocketDisconnect();
         expect(ch.state, PhoenixChannelState.closed);
 
         await socket.disconnect();
@@ -329,13 +335,15 @@ void main() {
         await Future.microtask(() {});
         final join1Msg = jsonDecode(sentMessages.last as String) as List;
         final join1Ref = join1Msg[1] as String;
-        serverChannel!.sink.add(jsonEncode([
-          join1Ref,
-          join1Ref,
-          'room:1',
-          'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}
-        ]));
+        serverChannel!.sink.add(
+          jsonEncode([
+            join1Ref,
+            join1Ref,
+            'room:1',
+            'phx_reply',
+            {'status': 'ok', 'response': <String, dynamic>{}},
+          ]),
+        );
         await Future.microtask(() {});
         await joinFuture1;
 
@@ -344,34 +352,40 @@ void main() {
         await Future.microtask(() {});
         final join2Msg = jsonDecode(sentMessages.last as String) as List;
         final join2Ref = join2Msg[1] as String;
-        serverChannel!.sink.add(jsonEncode([
-          join2Ref,
-          join2Ref,
-          'room:2',
-          'phx_reply',
-          {'status': 'ok', 'response': <String, dynamic>{}}
-        ]));
+        serverChannel!.sink.add(
+          jsonEncode([
+            join2Ref,
+            join2Ref,
+            'room:2',
+            'phx_reply',
+            {'status': 'ok', 'response': <String, dynamic>{}},
+          ]),
+        );
         await Future.microtask(() {});
         await joinFuture2;
 
         // Send app message to room:1
-        serverChannel!.sink.add(jsonEncode([
-          join1Ref,
-          null,
-          'room:1',
-          'new_msg',
-          {'body': 'hello ch1'}
-        ]));
+        serverChannel!.sink.add(
+          jsonEncode([
+            join1Ref,
+            null,
+            'room:1',
+            'new_msg',
+            {'body': 'hello ch1'},
+          ]),
+        );
         await Future.microtask(() {});
 
         // Send app message to room:2
-        serverChannel!.sink.add(jsonEncode([
-          join2Ref,
-          null,
-          'room:2',
-          'new_msg',
-          {'body': 'hello ch2'}
-        ]));
+        serverChannel!.sink.add(
+          jsonEncode([
+            join2Ref,
+            null,
+            'room:2',
+            'new_msg',
+            {'body': 'hello ch2'},
+          ]),
+        );
         await Future.microtask(() {});
         await Future.microtask(() {});
 

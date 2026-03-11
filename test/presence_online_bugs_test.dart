@@ -17,8 +17,10 @@ import 'presence_test.dart'
     show ChannelStub, encodeDiff, encodeState, stateToMap;
 
 PresenceEntry entry(List<Map<String, dynamic>> metas) => (metas: metas);
-Map<String, dynamic> meta(String ref, [Map<String, dynamic>? extra]) =>
-    {'phx_ref': ref, ...?extra};
+Map<String, dynamic> meta(String ref, [Map<String, dynamic>? extra]) => {
+  'phx_ref': ref,
+  ...?extra,
+};
 
 void main() {
   // =========================================================================
@@ -30,7 +32,9 @@ void main() {
   group('#3475: onJoin newPresence contains only new metas', () {
     test('syncDiff: newPres in onJoin has only the joining metas', () {
       final state = {
-        'u1': entry([meta('old', {'status': 'away'})])
+        'u1': entry([
+          meta('old', {'status': 'away'}),
+        ]),
       };
 
       PresenceEntry? capturedNew;
@@ -39,7 +43,9 @@ void main() {
       PhoenixPresence.syncDiff(
         state,
         joins: {
-          'u1': entry([meta('new', {'status': 'online'})])
+          'u1': entry([
+            meta('new', {'status': 'online'}),
+          ]),
         },
         leaves: {},
         onJoin: (key, current, newPres) {
@@ -60,39 +66,58 @@ void main() {
 
     test('syncDiff: final state has old meta prepended before new meta', () {
       final state = {
-        'u1': entry([meta('old')])
+        'u1': entry([meta('old')]),
       };
 
       final result = PhoenixPresence.syncDiff(
         state,
-        joins: {'u1': entry([meta('new')])},
+        joins: {
+          'u1': entry([meta('new')]),
+        },
         leaves: {},
       );
 
       // old first, new appended — matches JS unshift semantics
-      expect(result['u1']!.metas.map((m) => m['phx_ref']).toList(),
-          equals(['old', 'new']));
+      expect(
+        result['u1']!.metas.map((m) => m['phx_ref']).toList(),
+        equals(['old', 'new']),
+      );
     });
 
-    test('instance: onJoin receives only new metas even with existing presence', () {
-      final channel = ChannelStub();
-      final presence = PhoenixPresence(channel: channel);
+    test(
+      'instance: onJoin receives only new metas even with existing presence',
+      () {
+        final channel = ChannelStub();
+        final presence = PhoenixPresence(channel: channel);
 
-      channel.trigger('presence_state', encodeState({
-        'u1': entry([meta('ref1', {'device': 'phone'})])
-      }));
+        channel.trigger(
+          'presence_state',
+          encodeState({
+            'u1': entry([
+              meta('ref1', {'device': 'phone'}),
+            ]),
+          }),
+        );
 
-      PresenceEntry? capturedNew;
-      presence.onJoin = (_, _, newPres) => capturedNew = newPres;
+        PresenceEntry? capturedNew;
+        presence.onJoin = (_, _, newPres) => capturedNew = newPres;
 
-      channel.trigger('presence_diff', encodeDiff(
-        joins: {'u1': entry([meta('ref2', {'device': 'laptop'})])},
-      ));
+        channel.trigger(
+          'presence_diff',
+          encodeDiff(
+            joins: {
+              'u1': entry([
+                meta('ref2', {'device': 'laptop'}),
+              ]),
+            },
+          ),
+        );
 
-      // Must be only the laptop meta, not phone+laptop
-      expect(capturedNew!.metas, hasLength(1));
-      expect(capturedNew!.metas.first['device'], 'laptop');
-    });
+        // Must be only the laptop meta, not phone+laptop
+        expect(capturedNew!.metas, hasLength(1));
+        expect(capturedNew!.metas.first['device'], 'laptop');
+      },
+    );
   });
 
   // =========================================================================
@@ -107,12 +132,14 @@ void main() {
       // Simulate a diff re-delivery: the state already has ref_a from
       // the initial presence_state; the same diff arrives again.
       final state = {
-        'u1': entry([meta('ref_a')])
+        'u1': entry([meta('ref_a')]),
       };
 
       final result = PhoenixPresence.syncDiff(
         state,
-        joins: {'u1': entry([meta('ref_a')])}, // same ref already in state
+        joins: {
+          'u1': entry([meta('ref_a')]),
+        }, // same ref already in state
         leaves: {},
       );
 
@@ -135,26 +162,33 @@ void main() {
       expect(metas.first['phx_ref'], 'ref1');
     });
 
-    test('syncDiff: two different refs for same user both present after two joins', () {
-      var state = <String, PresenceEntry>{};
+    test(
+      'syncDiff: two different refs for same user both present after two joins',
+      () {
+        var state = <String, PresenceEntry>{};
 
-      state = PhoenixPresence.syncDiff(
-        state,
-        joins: {'u1': entry([meta('ref_a')])},
-        leaves: {},
-      );
-      state = PhoenixPresence.syncDiff(
-        state,
-        joins: {'u1': entry([meta('ref_b')])},
-        leaves: {},
-      );
+        state = PhoenixPresence.syncDiff(
+          state,
+          joins: {
+            'u1': entry([meta('ref_a')]),
+          },
+          leaves: {},
+        );
+        state = PhoenixPresence.syncDiff(
+          state,
+          joins: {
+            'u1': entry([meta('ref_b')]),
+          },
+          leaves: {},
+        );
 
-      expect(state['u1']!.metas, hasLength(2));
-      expect(
-        state['u1']!.metas.map((m) => m['phx_ref']).toSet(),
-        equals({'ref_a', 'ref_b'}),
-      );
-    });
+        expect(state['u1']!.metas, hasLength(2));
+        expect(
+          state['u1']!.metas.map((m) => m['phx_ref']).toSet(),
+          equals({'ref_a', 'ref_b'}),
+        );
+      },
+    );
   });
 
   // =========================================================================
@@ -166,81 +200,144 @@ void main() {
   // reflect only the new meta.
   // =========================================================================
   group('#5129: phx_ref_prev in update diffs', () {
-    test('syncDiff: update diff (leave old ref + join new ref with phx_ref_prev)', () {
-      final state = {
-        'u1': entry([meta('ref_v1', {'name': 'alice', 'status': 'away'})])
-      };
-
-      final result = PhoenixPresence.syncDiff(
-        state,
-        joins: {
+    test(
+      'syncDiff: update diff (leave old ref + join new ref with phx_ref_prev)',
+      () {
+        final state = {
           'u1': entry([
-            meta('ref_v2', {'name': 'alice', 'status': 'online', 'phx_ref_prev': 'ref_v1'})
-          ])
-        },
-        leaves: {
-          'u1': entry([meta('ref_v1')])
-        },
-      );
+            meta('ref_v1', {'name': 'alice', 'status': 'away'}),
+          ]),
+        };
 
-      // Only new meta remains
-      expect(result['u1']!.metas, hasLength(1));
-      expect(result['u1']!.metas.first['phx_ref'], 'ref_v2');
-      expect(result['u1']!.metas.first['status'], 'online');
-      // phx_ref_prev is preserved as a passthrough field
-      expect(result['u1']!.metas.first['phx_ref_prev'], 'ref_v1');
-    });
+        final result = PhoenixPresence.syncDiff(
+          state,
+          joins: {
+            'u1': entry([
+              meta('ref_v2', {
+                'name': 'alice',
+                'status': 'online',
+                'phx_ref_prev': 'ref_v1',
+              }),
+            ]),
+          },
+          leaves: {
+            'u1': entry([meta('ref_v1')]),
+          },
+        );
 
-    test('instance: phx_ref_prev update does not crash and fires onJoin+onLeave', () {
-      final channel = ChannelStub();
-      final presence = PhoenixPresence(channel: channel);
+        // Only new meta remains
+        expect(result['u1']!.metas, hasLength(1));
+        expect(result['u1']!.metas.first['phx_ref'], 'ref_v2');
+        expect(result['u1']!.metas.first['status'], 'online');
+        // phx_ref_prev is preserved as a passthrough field
+        expect(result['u1']!.metas.first['phx_ref_prev'], 'ref_v1');
+      },
+    );
 
-      channel.trigger('presence_state', encodeState({
-        'u1': entry([meta('ref_v1', {'name': 'alice', 'status': 'away'})])
-      }));
+    test(
+      'instance: phx_ref_prev update does not crash and fires onJoin+onLeave',
+      () {
+        final channel = ChannelStub();
+        final presence = PhoenixPresence(channel: channel);
 
-      String? joinedKey;
-      String? leftKey;
-      presence.onJoin = (key, _, _) => joinedKey = key;
-      presence.onLeave = (key, _, _) => leftKey = key;
-      channel.trigger('presence_diff', {
-        'joins': {
-          'u1': {
-            'metas': [
-              {'phx_ref': 'ref_v2', 'phx_ref_prev': 'ref_v1', 'name': 'alice', 'status': 'online'}
-            ]
-          }
-        },
-        'leaves': {
-          'u1': {'metas': [{'phx_ref': 'ref_v1'}]}
-        },
-      });
+        channel.trigger(
+          'presence_state',
+          encodeState({
+            'u1': entry([
+              meta('ref_v1', {'name': 'alice', 'status': 'away'}),
+            ]),
+          }),
+        );
 
-      expect(joinedKey, 'u1');
-      expect(leftKey, 'u1');
-      expect(
-        presence.list((k, e) => e.metas).first.first['status'],
-        'online',
-      );
-    });
+        String? joinedKey;
+        String? leftKey;
+        presence.onJoin = (key, _, _) => joinedKey = key;
+        presence.onLeave = (key, _, _) => leftKey = key;
+        channel.trigger('presence_diff', {
+          'joins': {
+            'u1': {
+              'metas': [
+                {
+                  'phx_ref': 'ref_v2',
+                  'phx_ref_prev': 'ref_v1',
+                  'name': 'alice',
+                  'status': 'online',
+                },
+              ],
+            },
+          },
+          'leaves': {
+            'u1': {
+              'metas': [
+                {'phx_ref': 'ref_v1'},
+              ],
+            },
+          },
+        });
+
+        expect(joinedKey, 'u1');
+        expect(leftKey, 'u1');
+        expect(
+          presence.list((k, e) => e.metas).first.first['status'],
+          'online',
+        );
+      },
+    );
 
     test('multiple consecutive updates preserve only the latest meta', () {
       final channel = ChannelStub();
       final presence = PhoenixPresence(channel: channel);
 
       channel
-        ..trigger('presence_state', encodeState({
-          'u1': entry([meta('ref_v1', {'status': 'away'})])
-        }))
+        ..trigger(
+          'presence_state',
+          encodeState({
+            'u1': entry([
+              meta('ref_v1', {'status': 'away'}),
+            ]),
+          }),
+        )
         // Update 1: away → online
         ..trigger('presence_diff', {
-          'joins': {'u1': {'metas': [{'phx_ref': 'ref_v2', 'phx_ref_prev': 'ref_v1', 'status': 'online'}]}},
-          'leaves': {'u1': {'metas': [{'phx_ref': 'ref_v1'}]}},
+          'joins': {
+            'u1': {
+              'metas': [
+                {
+                  'phx_ref': 'ref_v2',
+                  'phx_ref_prev': 'ref_v1',
+                  'status': 'online',
+                },
+              ],
+            },
+          },
+          'leaves': {
+            'u1': {
+              'metas': [
+                {'phx_ref': 'ref_v1'},
+              ],
+            },
+          },
         })
         // Update 2: online → busy
         ..trigger('presence_diff', {
-          'joins': {'u1': {'metas': [{'phx_ref': 'ref_v3', 'phx_ref_prev': 'ref_v2', 'status': 'busy'}]}},
-          'leaves': {'u1': {'metas': [{'phx_ref': 'ref_v2'}]}},
+          'joins': {
+            'u1': {
+              'metas': [
+                {
+                  'phx_ref': 'ref_v3',
+                  'phx_ref_prev': 'ref_v2',
+                  'status': 'busy',
+                },
+              ],
+            },
+          },
+          'leaves': {
+            'u1': {
+              'metas': [
+                {'phx_ref': 'ref_v2'},
+              ],
+            },
+          },
         });
 
       final metas = presence.list((k, e) => e.metas).first;
@@ -267,43 +364,68 @@ void main() {
       final result = PhoenixPresence.syncDiff(
         state,
         // User joined and immediately left with same ref — net effect: absent
-        joins: {'u1': entry([meta('ref_a')])},
-        leaves: {'u1': entry([meta('ref_a')])},
+        joins: {
+          'u1': entry([meta('ref_a')]),
+        },
+        leaves: {
+          'u1': entry([meta('ref_a')]),
+        },
       );
 
       expect(result.containsKey('u1'), isFalse);
     });
 
-    test('different phx_refs in joins and leaves → user reconnected (net: present with new ref)', () {
-      // leave-then-join within broadcast window: old ref left, new ref joined.
-      final state = {
-        'u1': entry([meta('ref_old')])
-      };
+    test(
+      'different phx_refs in joins and leaves → user reconnected (net: present with new ref)',
+      () {
+        // leave-then-join within broadcast window: old ref left, new ref joined.
+        final state = {
+          'u1': entry([meta('ref_old')]),
+        };
 
-      final result = PhoenixPresence.syncDiff(
-        state,
-        joins: {'u1': entry([meta('ref_new')])},
-        leaves: {'u1': entry([meta('ref_old')])},
-      );
+        final result = PhoenixPresence.syncDiff(
+          state,
+          joins: {
+            'u1': entry([meta('ref_new')]),
+          },
+          leaves: {
+            'u1': entry([meta('ref_old')]),
+          },
+        );
 
-      expect(result.containsKey('u1'), isTrue);
-      expect(result['u1']!.metas, hasLength(1));
-      expect(result['u1']!.metas.first['phx_ref'], 'ref_new');
-    });
+        expect(result.containsKey('u1'), isTrue);
+        expect(result['u1']!.metas, hasLength(1));
+        expect(result['u1']!.metas.first['phx_ref'], 'ref_new');
+      },
+    );
 
     test('instance: rapid reconnect within broadcast window preserves user', () {
       final channel = ChannelStub();
       final presence = PhoenixPresence(channel: channel);
 
       channel
-        ..trigger('presence_state', encodeState({
-          'u1': entry([meta('ref_old', {'name': 'alice'})])
-        }))
+        ..trigger(
+          'presence_state',
+          encodeState({
+            'u1': entry([
+              meta('ref_old', {'name': 'alice'}),
+            ]),
+          }),
+        )
         // User disconnected and reconnected within the 1500ms broadcast window
-        ..trigger('presence_diff', encodeDiff(
-          joins: {'u1': entry([meta('ref_new', {'name': 'alice'})])},
-          leaves: {'u1': entry([meta('ref_old')])},
-        ));
+        ..trigger(
+          'presence_diff',
+          encodeDiff(
+            joins: {
+              'u1': entry([
+                meta('ref_new', {'name': 'alice'}),
+              ]),
+            },
+            leaves: {
+              'u1': entry([meta('ref_old')]),
+            },
+          ),
+        );
 
       expect(presence.list((k, _) => k), equals(['u1']));
       final metas = presence.list((k, e) => e.metas).first;
@@ -317,10 +439,17 @@ void main() {
       channel
         ..trigger('presence_state', encodeState({}))
         // User joined and immediately left before broadcast fired
-        ..trigger('presence_diff', encodeDiff(
-          joins: {'u1': entry([meta('ref_a')])},
-          leaves: {'u1': entry([meta('ref_a')])},
-        ));
+        ..trigger(
+          'presence_diff',
+          encodeDiff(
+            joins: {
+              'u1': entry([meta('ref_a')]),
+            },
+            leaves: {
+              'u1': entry([meta('ref_a')]),
+            },
+          ),
+        );
 
       expect(presence.list((k, _) => k), isEmpty);
     });
@@ -335,19 +464,25 @@ void main() {
   // the client should not double-add them.
   // =========================================================================
   group('gh-PS #74: CRDT desync — duplicate phx_refs in presence_state', () {
-    test('syncState: snapshot with duplicate phx_ref in metas list deduplicates', () {
-      // Server bug sends same ref twice in one metas list
-      final newState = {
-        'u1': entry([meta('ref1'), meta('ref1')]) // duplicate
-      };
-      final result = PhoenixPresence.syncState({}, newState);
-      // After sync, u1 has one meta (dedup via phx_ref set logic in syncState)
-      // NOTE: syncState only deduplicates across the join/leave diff boundary.
-      // Within a single metas list it does not deduplicate — this is faithful
-      // to the JS reference. What it DOES do is not add the dup ref on top of
-      // an existing one. Verify the state equals the (possibly dup) newState.
-      expect(result['u1']!.metas, hasLength(2)); // faithful to JS: no within-list dedup
-    });
+    test(
+      'syncState: snapshot with duplicate phx_ref in metas list deduplicates',
+      () {
+        // Server bug sends same ref twice in one metas list
+        final newState = {
+          'u1': entry([meta('ref1'), meta('ref1')]), // duplicate
+        };
+        final result = PhoenixPresence.syncState({}, newState);
+        // After sync, u1 has one meta (dedup via phx_ref set logic in syncState)
+        // NOTE: syncState only deduplicates across the join/leave diff boundary.
+        // Within a single metas list it does not deduplicate — this is faithful
+        // to the JS reference. What it DOES do is not add the dup ref on top of
+        // an existing one. Verify the state equals the (possibly dup) newState.
+        expect(
+          result['u1']!.metas,
+          hasLength(2),
+        ); // faithful to JS: no within-list dedup
+      },
+    );
 
     test('syncState followed by same-state syncState is idempotent', () {
       // If server sends the same presence_state twice (no change), no
@@ -388,41 +523,63 @@ void main() {
   // Snapshot contains a user who then immediately sends a leave diff.
   // Client must handle this gracefully — no crash, correct final state.
   // =========================================================================
-  group('#2306: zombie presences — appear in snapshot then immediately leave', () {
-    test('user in presence_state followed immediately by leave diff is removed', () {
-      final channel = ChannelStub();
-      final presence = PhoenixPresence(channel: channel);
+  group(
+    '#2306: zombie presences — appear in snapshot then immediately leave',
+    () {
+      test(
+        'user in presence_state followed immediately by leave diff is removed',
+        () {
+          final channel = ChannelStub();
+          final presence = PhoenixPresence(channel: channel);
 
-      final zombie = entry([meta('z1', {'name': 'ghost'})]);
+          final zombie = entry([
+            meta('z1', {'name': 'ghost'}),
+          ]);
 
-      channel
-        ..trigger('presence_state', encodeState({
-          'ghost_user': zombie,
-          'real_user': entry([meta('r1')]),
-        }))
-        // Ghost immediately leaves (zombie presence resolved)
-        ..trigger('presence_diff', encodeDiff(leaves: {'ghost_user': zombie}));
+          channel
+            ..trigger(
+              'presence_state',
+              encodeState({
+                'ghost_user': zombie,
+                'real_user': entry([meta('r1')]),
+              }),
+            )
+            // Ghost immediately leaves (zombie presence resolved)
+            ..trigger(
+              'presence_diff',
+              encodeDiff(leaves: {'ghost_user': zombie}),
+            );
 
-      final keys = presence.list((k, _) => k);
-      expect(keys, equals(['real_user']));
-      expect(keys.contains('ghost_user'), isFalse);
-    });
+          final keys = presence.list((k, _) => k);
+          expect(keys, equals(['real_user']));
+          expect(keys.contains('ghost_user'), isFalse);
+        },
+      );
 
-    test('zombie appears in pending diff queue then leaves before snapshot — not in final state', () {
-      final channel = ChannelStub();
-      final presence = PhoenixPresence(channel: channel);
+      test(
+        'zombie appears in pending diff queue then leaves before snapshot — not in final state',
+        () {
+          final channel = ChannelStub();
+          final presence = PhoenixPresence(channel: channel);
 
-      final zombie = entry([meta('z1')]);
+          final zombie = entry([meta('z1')]);
 
-      // Diff arrives before snapshot: zombie joins then leaves
-      channel
-        ..trigger('presence_diff', encodeDiff(joins: {'ghost': zombie}))
-        ..trigger('presence_diff', encodeDiff(leaves: {'ghost': zombie}))
-        ..trigger('presence_state', encodeState({'real': entry([meta('r1')])}));
-      final keys = presence.list((k, _) => k);
-      expect(keys, equals(['real']));
-    });
-  });
+          // Diff arrives before snapshot: zombie joins then leaves
+          channel
+            ..trigger('presence_diff', encodeDiff(joins: {'ghost': zombie}))
+            ..trigger('presence_diff', encodeDiff(leaves: {'ghost': zombie}))
+            ..trigger(
+              'presence_state',
+              encodeState({
+                'real': entry([meta('r1')]),
+              }),
+            );
+          final keys = presence.list((k, _) => k);
+          expect(keys, equals(['real']));
+        },
+      );
+    },
+  );
 
   // =========================================================================
   // Issue #2034: no presence_diff when last user leaves
@@ -433,19 +590,22 @@ void main() {
   // presence_state. It is never because the channel sent a final leave diff.
   // =========================================================================
   group('#2034: last-user-leave design implication', () {
-    test('list() is empty only after an explicit leave diff or empty state snapshot', () {
-      final channel = ChannelStub();
-      final presence = PhoenixPresence(channel: channel);
-      final u1 = entry([meta('1')]);
+    test(
+      'list() is empty only after an explicit leave diff or empty state snapshot',
+      () {
+        final channel = ChannelStub();
+        final presence = PhoenixPresence(channel: channel);
+        final u1 = entry([meta('1')]);
 
-      channel.trigger('presence_state', encodeState({'u1': u1}));
-      expect(presence.list((k, _) => k), hasLength(1));
+        channel.trigger('presence_state', encodeState({'u1': u1}));
+        expect(presence.list((k, _) => k), hasLength(1));
 
-      // The diff IS received (the last-user scenario is a server/channel-process
-      // concern, not a client concern). The client correctly processes it.
-      channel.trigger('presence_diff', encodeDiff(leaves: {'u1': u1}));
-      expect(presence.list((k, _) => k), isEmpty);
-    });
+        // The diff IS received (the last-user scenario is a server/channel-process
+        // concern, not a client concern). The client correctly processes it.
+        channel.trigger('presence_diff', encodeDiff(leaves: {'u1': u1}));
+        expect(presence.list((k, _) => k), isEmpty);
+      },
+    );
 
     test('no phantom leave event fires when no diff arrives', () {
       final channel = ChannelStub();

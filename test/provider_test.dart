@@ -63,31 +63,58 @@ class FakeServer {
   /// Sends a phx_reply ok to the last join seen in _sent.
   void replyJoinOk(String topic) {
     final raw = _sent.lastWhere(
-        (m) => (jsonDecode(m as String) as List)[3] == 'phx_join' &&
-            (jsonDecode(m) as List)[2] == topic);
+      (m) =>
+          (jsonDecode(m as String) as List)[3] == 'phx_join' &&
+          (jsonDecode(m) as List)[2] == topic,
+    );
     final ref = (jsonDecode(raw as String) as List)[1] as String;
-    send([ref, ref, topic, 'phx_reply', {'status': 'ok', 'response': <String, dynamic>{}}]);
+    send([
+      ref,
+      ref,
+      topic,
+      'phx_reply',
+      {'status': 'ok', 'response': <String, dynamic>{}},
+    ]);
   }
 
   /// Sends a phx_reply error to the last join for [topic].
   void replyJoinError(String topic, Map<String, dynamic> response) {
     final raw = _sent.lastWhere(
-        (m) => (jsonDecode(m as String) as List)[3] == 'phx_join' &&
-            (jsonDecode(m) as List)[2] == topic);
+      (m) =>
+          (jsonDecode(m as String) as List)[3] == 'phx_join' &&
+          (jsonDecode(m) as List)[2] == topic,
+    );
     final ref = (jsonDecode(raw as String) as List)[1] as String;
-    send([ref, ref, topic, 'phx_reply', {'status': 'error', 'response': response}]);
+    send([
+      ref,
+      ref,
+      topic,
+      'phx_reply',
+      {'status': 'error', 'response': response},
+    ]);
   }
 
   /// Finds the ref of the last push for [event] on [topic] and replies ok.
-  void replyPushOk(String topic, String event,
-      [Map<String, dynamic> response = const {}]) {
+  void replyPushOk(
+    String topic,
+    String event, [
+    Map<String, dynamic> response = const {},
+  ]) {
     final raw = _sent.lastWhere(
-        (m) => (jsonDecode(m as String) as List)[3] == event &&
-            (jsonDecode(m) as List)[2] == topic);
+      (m) =>
+          (jsonDecode(m as String) as List)[3] == event &&
+          (jsonDecode(m) as List)[2] == topic,
+    );
     final decoded = jsonDecode(raw as String) as List;
     final joinRef = decoded[0] as String;
     final ref = decoded[1] as String;
-    send([joinRef, ref, topic, 'phx_reply', {'status': 'ok', 'response': response}]);
+    send([
+      joinRef,
+      ref,
+      topic,
+      'phx_reply',
+      {'status': 'ok', 'response': response},
+    ]);
   }
 
   /// Sends a presence_state event on [topic].
@@ -96,10 +123,18 @@ class FakeServer {
   }
 
   /// Sends a presence_diff event on [topic].
-  void sendPresenceDiff(String topic,
-      {Map<String, dynamic> joins = const {},
-      Map<String, dynamic> leaves = const {}}) {
-    send([null, null, topic, 'presence_diff', {'joins': joins, 'leaves': leaves}]);
+  void sendPresenceDiff(
+    String topic, {
+    Map<String, dynamic> joins = const {},
+    Map<String, dynamic> leaves = const {},
+  }) {
+    send([
+      null,
+      null,
+      topic,
+      'presence_diff',
+      {'joins': joins, 'leaves': leaves},
+    ]);
   }
 
   /// Sends an arbitrary app event on [topic].
@@ -128,7 +163,6 @@ Future<void> flush([int n = 6]) async {
 // ── NotificationsProvider ──────────────────────────────────────────────────
 
 class NotificationsProvider {
-
   // BUG C fix: expose result so callers can react to failure
   NotificationsProvider(this._socket, this._userId) {
     unawaited(_init());
@@ -200,7 +234,6 @@ class NotificationsProvider {
 // This is wrong for multi-device users and for stale diffs before state.
 
 class PresenceProvider {
-
   PresenceProvider(this._socket, this._roomId) {
     _channel = _socket.channel('room:$_roomId');
     _presence = PhoenixPresence(channel: _channel);
@@ -243,7 +276,6 @@ class PresenceProvider {
 // not `joined`/`joining`).
 
 class ChatProvider {
-
   ChatProvider(this._socket, this._roomId) {
     _channel = _socket.channel('room:$_roomId');
     _sub = _channel.messages.listen(_onMessage);
@@ -311,7 +343,6 @@ class ChatProvider {
 // ── FeedProvider ───────────────────────────────────────────────────────────
 
 class FeedProvider {
-
   FeedProvider(this._socket, this._userId) {
     unawaited(_init());
   }
@@ -347,8 +378,8 @@ class FeedProvider {
         'cursor': cursor,
         'limit': 20,
       });
-      final newItems =
-          (reply['items'] as List? ?? []).cast<Map<String, dynamic>>();
+      final newItems = (reply['items'] as List? ?? [])
+          .cast<Map<String, dynamic>>();
       items.addAll(newItems);
     } on PhoenixException catch (e) {
       error = e.message;
@@ -405,8 +436,10 @@ void main() {
       expect(provider.error, isNull);
 
       // Server pushes a notification
-      t.sendEvent('notifications:user_1', 'new_notification',
-          {'id': 'n1', 'title': 'Hello'});
+      t.sendEvent('notifications:user_1', 'new_notification', {
+        'id': 'n1',
+        'title': 'Hello',
+      });
       await flush();
 
       expect(provider.notifications, hasLength(1));
@@ -424,8 +457,14 @@ void main() {
       await flush();
 
       t
-        ..sendEvent('notifications:user_1', 'new_notification', {'id': 'n1', 'title': 'First'})
-        ..sendEvent('notifications:user_1', 'new_notification', {'id': 'n2', 'title': 'Second'});
+        ..sendEvent('notifications:user_1', 'new_notification', {
+          'id': 'n1',
+          'title': 'First',
+        })
+        ..sendEvent('notifications:user_1', 'new_notification', {
+          'id': 'n2',
+          'title': 'Second',
+        });
       await flush();
 
       expect(provider.notifications.first['title'], 'Second');
@@ -442,8 +481,14 @@ void main() {
       await flush();
 
       t
-        ..sendEvent('notifications:user_1', 'new_notification', {'id': 'n1', 'title': 'A'})
-        ..sendEvent('notifications:user_1', 'new_notification', {'id': 'n2', 'title': 'B'});
+        ..sendEvent('notifications:user_1', 'new_notification', {
+          'id': 'n1',
+          'title': 'A',
+        })
+        ..sendEvent('notifications:user_1', 'new_notification', {
+          'id': 'n2',
+          'title': 'B',
+        });
       await flush();
 
       expect(provider.unreadCount, 2);
@@ -452,8 +497,16 @@ void main() {
       await flush();
 
       expect(provider.unreadCount, 1);
-      expect(provider.notifications.firstWhere((n) => n['id'] == 'n1')['read'], isTrue);
-      expect(provider.notifications.firstWhere((n) => n['id'] == 'n2').containsKey('read'), isFalse);
+      expect(
+        provider.notifications.firstWhere((n) => n['id'] == 'n1')['read'],
+        isTrue,
+      );
+      expect(
+        provider.notifications
+            .firstWhere((n) => n['id'] == 'n2')
+            .containsKey('read'),
+        isFalse,
+      );
 
       provider.dispose();
     });
@@ -487,10 +540,19 @@ void main() {
 
       // Server replies with error
       final raw = t._sent.lastWhere(
-          (m) => (jsonDecode(m as String) as List)[3] == 'mark_read');
+        (m) => (jsonDecode(m as String) as List)[3] == 'mark_read',
+      );
       final decoded = jsonDecode(raw as String) as List;
-      t.send([decoded[0], decoded[1], 'notifications:user_1', 'phx_reply',
-          {'status': 'error', 'response': {'reason': 'not_found'}}]);
+      t.send([
+        decoded[0],
+        decoded[1],
+        'notifications:user_1',
+        'phx_reply',
+        {
+          'status': 'error',
+          'response': {'reason': 'not_found'},
+        },
+      ]);
       await flush();
 
       expect(await resultFuture, isFalse);
@@ -527,8 +589,16 @@ void main() {
       expect(provider.joined, isTrue);
 
       t.sendPresenceState('room:room_1', {
-        'alice': {'metas': [{'phx_ref': 'r1', 'name': 'Alice'}]},
-        'bob':   {'metas': [{'phx_ref': 'r2', 'name': 'Bob'}]},
+        'alice': {
+          'metas': [
+            {'phx_ref': 'r1', 'name': 'Alice'},
+          ],
+        },
+        'bob': {
+          'metas': [
+            {'phx_ref': 'r2', 'name': 'Bob'},
+          ],
+        },
       });
       await flush();
 
@@ -538,69 +608,99 @@ void main() {
       provider.dispose();
     });
 
-    test('BUG A: presence_diff leave removes only the leaving meta, not entire user', () async {
-      // Old example did: onlineUsers.removeWhere(leaves.containsKey)
-      // This removes the user entirely even if they still have another session.
-      await t.connect();
-      final provider = PresenceProvider(t.socket, 'room_1');
-      await flush();
-      t.replyJoinOk('room:room_1');
-      await flush();
+    test(
+      'BUG A: presence_diff leave removes only the leaving meta, not entire user',
+      () async {
+        // Old example did: onlineUsers.removeWhere(leaves.containsKey)
+        // This removes the user entirely even if they still have another session.
+        await t.connect();
+        final provider = PresenceProvider(t.socket, 'room_1');
+        await flush();
+        t.replyJoinOk('room:room_1');
+        await flush();
 
-      t.sendPresenceState('room:room_1', {
-        'alice': {
-          'metas': [
-            {'phx_ref': 'ref_phone', 'device': 'phone'},
-            {'phx_ref': 'ref_laptop', 'device': 'laptop'},
-          ]
-        },
-      });
-      await flush();
+        t.sendPresenceState('room:room_1', {
+          'alice': {
+            'metas': [
+              {'phx_ref': 'ref_phone', 'device': 'phone'},
+              {'phx_ref': 'ref_laptop', 'device': 'laptop'},
+            ],
+          },
+        });
+        await flush();
 
-      // Phone disconnects — laptop session should stay
-      t.sendPresenceDiff('room:room_1',
-          leaves: {'alice': {'metas': [{'phx_ref': 'ref_phone'}]}});
-      await flush();
+        // Phone disconnects — laptop session should stay
+        t.sendPresenceDiff(
+          'room:room_1',
+          leaves: {
+            'alice': {
+              'metas': [
+                {'phx_ref': 'ref_phone'},
+              ],
+            },
+          },
+        );
+        await flush();
 
-      final keys = provider.presence.list((k, _) => k);
-      expect(keys, equals(['alice'])); // still online via laptop
+        final keys = provider.presence.list((k, _) => k);
+        expect(keys, equals(['alice'])); // still online via laptop
 
-      final metas = provider.presence.list((k, e) => e.metas).first;
-      expect(metas, hasLength(1));
-      expect(metas.first['device'], 'laptop');
+        final metas = provider.presence.list((k, e) => e.metas).first;
+        expect(metas, hasLength(1));
+        expect(metas.first['device'], 'laptop');
 
-      provider.dispose();
-    });
+        provider.dispose();
+      },
+    );
 
-    test('BUG A: stale diff before presence_state is queued and applied correctly', () async {
-      await t.connect();
-      final provider = PresenceProvider(t.socket, 'room_1');
-      await flush();
-      t.replyJoinOk('room:room_1');
-      await flush();
+    test(
+      'BUG A: stale diff before presence_state is queued and applied correctly',
+      () async {
+        await t.connect();
+        final provider = PresenceProvider(t.socket, 'room_1');
+        await flush();
+        t.replyJoinOk('room:room_1');
+        await flush();
 
-      // Diff arrives before presence_state
-      t.sendPresenceDiff('room:room_1',
-          leaves: {'bob': {'metas': [{'phx_ref': 'r2'}]}});
-      await flush();
+        // Diff arrives before presence_state
+        t.sendPresenceDiff(
+          'room:room_1',
+          leaves: {
+            'bob': {
+              'metas': [
+                {'phx_ref': 'r2'},
+              ],
+            },
+          },
+        );
+        await flush();
 
-      // State not applied yet
-      expect(provider.presence.inPendingSyncState, isTrue);
-      expect(provider.presence.list((k, _) => k), isEmpty);
+        // State not applied yet
+        expect(provider.presence.inPendingSyncState, isTrue);
+        expect(provider.presence.list((k, _) => k), isEmpty);
 
-      // State arrives — bob was already gone before it arrived
-      t.sendPresenceState('room:room_1', {
-        'alice': {'metas': [{'phx_ref': 'r1'}]},
-        'bob':   {'metas': [{'phx_ref': 'r2'}]},
-      });
-      await flush();
+        // State arrives — bob was already gone before it arrived
+        t.sendPresenceState('room:room_1', {
+          'alice': {
+            'metas': [
+              {'phx_ref': 'r1'},
+            ],
+          },
+          'bob': {
+            'metas': [
+              {'phx_ref': 'r2'},
+            ],
+          },
+        });
+        await flush();
 
-      // Pending diff applied: bob left → only alice remains
-      final keys = provider.presence.list((k, _) => k);
-      expect(keys, equals(['alice']));
+        // Pending diff applied: bob left → only alice remains
+        final keys = provider.presence.list((k, _) => k);
+        expect(keys, equals(['alice']));
 
-      provider.dispose();
-    });
+        provider.dispose();
+      },
+    );
 
     test('onSync callback notified after presence_state', () async {
       await t.connect();
@@ -613,7 +713,11 @@ void main() {
       provider.presence.onSync = () => syncs++;
 
       t.sendPresenceState('room:room_1', {
-        'alice': {'metas': [{'phx_ref': 'r1'}]},
+        'alice': {
+          'metas': [
+            {'phx_ref': 'r1'},
+          ],
+        },
       });
       await flush();
 
@@ -676,10 +780,19 @@ void main() {
       await flush();
 
       final raw = t._sent.lastWhere(
-          (m) => (jsonDecode(m as String) as List)[3] == 'new_msg');
+        (m) => (jsonDecode(m as String) as List)[3] == 'new_msg',
+      );
       final decoded = jsonDecode(raw as String) as List;
-      t.send([decoded[0], decoded[1], 'room:room_1', 'phx_reply',
-          {'status': 'error', 'response': {'reason': 'rate_limited'}}]);
+      t.send([
+        decoded[0],
+        decoded[1],
+        'room:room_1',
+        'phx_reply',
+        {
+          'status': 'error',
+          'response': {'reason': 'rate_limited'},
+        },
+      ]);
       await flush();
 
       expect(await resultFuture, isFalse);
@@ -702,33 +815,39 @@ void main() {
       provider.dispose();
     });
 
-    test('BUG B: two providers sharing same channel — ChatProvider skips join when already joined', () async {
-      // PresenceProvider joins first; ChatProvider must not call join() again.
-      await t.connect();
-      final presenceProvider = PresenceProvider(t.socket, 'room_1');
-      await flush();
-      t.replyJoinOk('room:room_1');
-      await flush();
-      expect(presenceProvider.joined, isTrue);
+    test(
+      'BUG B: two providers sharing same channel — ChatProvider skips join when already joined',
+      () async {
+        // PresenceProvider joins first; ChatProvider must not call join() again.
+        await t.connect();
+        final presenceProvider = PresenceProvider(t.socket, 'room_1');
+        await flush();
+        t.replyJoinOk('room:room_1');
+        await flush();
+        expect(presenceProvider.joined, isTrue);
 
-      // ChatProvider gets the same cached channel — state is already joined
-      final chatProvider = ChatProvider(t.socket, 'room_1');
-      await flush();
-      // No second phx_join should have been sent
-      final joinMsgs = t._sent
-          .where((m) => (jsonDecode(m as String) as List)[3] == 'phx_join' &&
-              (jsonDecode(m) as List)[2] == 'room:room_1')
-          .toList();
-      expect(joinMsgs, hasLength(1)); // only one join ever sent
+        // ChatProvider gets the same cached channel — state is already joined
+        final chatProvider = ChatProvider(t.socket, 'room_1');
+        await flush();
+        // No second phx_join should have been sent
+        final joinMsgs = t._sent
+            .where(
+              (m) =>
+                  (jsonDecode(m as String) as List)[3] == 'phx_join' &&
+                  (jsonDecode(m) as List)[2] == 'room:room_1',
+            )
+            .toList();
+        expect(joinMsgs, hasLength(1)); // only one join ever sent
 
-      // ChatProvider can still send and receive
-      t.sendEvent('room:room_1', 'new_msg', {'user': 'alice', 'body': 'hey'});
-      await flush();
-      expect(chatProvider.messages, hasLength(1));
+        // ChatProvider can still send and receive
+        t.sendEvent('room:room_1', 'new_msg', {'user': 'alice', 'body': 'hey'});
+        await flush();
+        expect(chatProvider.messages, hasLength(1));
 
-      chatProvider.dispose();
-      presenceProvider.dispose();
-    });
+        chatProvider.dispose();
+        presenceProvider.dispose();
+      },
+    );
   });
 
   // =========================================================================
@@ -741,9 +860,11 @@ void main() {
       await flush();
 
       // Verify join payload carried limit
-      final joinMsg = t._sent
-          .firstWhere((m) => (jsonDecode(m as String) as List)[3] == 'phx_join' &&
-              (jsonDecode(m) as List)[2] == 'feed:user_1');
+      final joinMsg = t._sent.firstWhere(
+        (m) =>
+            (jsonDecode(m as String) as List)[3] == 'phx_join' &&
+            (jsonDecode(m) as List)[2] == 'feed:user_1',
+      );
       final payload = (jsonDecode(joinMsg as String) as List)[4] as Map;
       expect(payload['limit'], 20);
 
@@ -751,8 +872,9 @@ void main() {
       await flush();
 
       // list_items push was sent after join
-      final listMsg = t._sent
-          .firstWhere((m) => (jsonDecode(m as String) as List)[3] == 'list_items');
+      final listMsg = t._sent.firstWhere(
+        (m) => (jsonDecode(m as String) as List)[3] == 'list_items',
+      );
       expect(listMsg, isNotNull);
 
       // Reply with items
@@ -760,7 +882,7 @@ void main() {
         'items': [
           {'id': 'i1', 'title': 'Post 1', 'cursor': 'c1'},
           {'id': 'i2', 'title': 'Post 2', 'cursor': 'c2'},
-        ]
+        ],
       });
       await flush();
 
@@ -781,7 +903,10 @@ void main() {
       t.replyPushOk('feed:user_1', 'list_items', {'items': []});
       await flush();
 
-      t.sendEvent('feed:user_1', 'new_item', {'id': 'i_new', 'title': 'Breaking'});
+      t.sendEvent('feed:user_1', 'new_item', {
+        'id': 'i_new',
+        'title': 'Breaking',
+      });
       await flush();
 
       expect(provider.items.first['title'], 'Breaking');
@@ -796,7 +921,9 @@ void main() {
       t.replyJoinOk('feed:user_1');
       await flush();
       t.replyPushOk('feed:user_1', 'list_items', {
-        'items': [{'id': 'i1', 'cursor': 'cursor_1'}]
+        'items': [
+          {'id': 'i1', 'cursor': 'cursor_1'},
+        ],
       });
       await flush();
 
@@ -809,11 +936,14 @@ void main() {
           .toList();
       expect(listMsgs, hasLength(2));
 
-      final secondPayload = (jsonDecode(listMsgs.last as String) as List)[4] as Map;
+      final secondPayload =
+          (jsonDecode(listMsgs.last as String) as List)[4] as Map;
       expect(secondPayload['cursor'], 'cursor_1');
 
       t.replyPushOk('feed:user_1', 'list_items', {
-        'items': [{'id': 'i2', 'cursor': 'cursor_2'}]
+        'items': [
+          {'id': 'i2', 'cursor': 'cursor_2'},
+        ],
       });
       await flush();
       await moreFuture;
@@ -846,10 +976,19 @@ void main() {
 
       // Reply to list_items with error
       final raw = t._sent.lastWhere(
-          (m) => (jsonDecode(m as String) as List)[3] == 'list_items');
+        (m) => (jsonDecode(m as String) as List)[3] == 'list_items',
+      );
       final decoded = jsonDecode(raw as String) as List;
-      t.send([decoded[0], decoded[1], 'feed:user_1', 'phx_reply',
-          {'status': 'error', 'response': {'reason': 'db_error'}}]);
+      t.send([
+        decoded[0],
+        decoded[1],
+        'feed:user_1',
+        'phx_reply',
+        {
+          'status': 'error',
+          'response': {'reason': 'db_error'},
+        },
+      ]);
       await flush();
 
       expect(provider.items, isEmpty);
@@ -886,14 +1025,21 @@ void main() {
       var syncCount = 0;
       presence.presence.onSync = () => syncCount++;
       t.sendPresenceState('room:room_1', {
-        'alice': {'metas': [{'phx_ref': 'r1'}]},
+        'alice': {
+          'metas': [
+            {'phx_ref': 'r1'},
+          ],
+        },
       });
       await flush();
       expect(syncCount, 1);
       expect(presence.presence.list((k, _) => k), equals(['alice']));
 
       // Chat message received by chat provider
-      t.sendEvent('room:room_1', 'new_msg', {'user': 'alice', 'body': 'hi all'});
+      t.sendEvent('room:room_1', 'new_msg', {
+        'user': 'alice',
+        'body': 'hi all',
+      });
       await flush();
       expect(chat.messages, hasLength(1));
 
@@ -911,7 +1057,11 @@ void main() {
       await flush();
 
       t.sendPresenceState('room:room_1', {
-        'alice': {'metas': [{'phx_ref': 'r1'}]},
+        'alice': {
+          'metas': [
+            {'phx_ref': 'r1'},
+          ],
+        },
       });
       await flush();
 
@@ -920,11 +1070,22 @@ void main() {
       await flush();
 
       // Presence still works
-      t.sendPresenceDiff('room:room_1',
-          joins: {'bob': {'metas': [{'phx_ref': 'r2'}]}});
+      t.sendPresenceDiff(
+        'room:room_1',
+        joins: {
+          'bob': {
+            'metas': [
+              {'phx_ref': 'r2'},
+            ],
+          },
+        },
+      );
       await flush();
 
-      expect(presence.presence.list((k, _) => k).toSet(), equals({'alice', 'bob'}));
+      expect(
+        presence.presence.list((k, _) => k).toSet(),
+        equals({'alice', 'bob'}),
+      );
 
       presence.dispose();
     });

@@ -72,10 +72,12 @@ class PhoenixChannel {
     Map<String, dynamic> payload = const {},
   }) {
     if (_joinCalled) {
-      return Future.error(StateError(
-        'PhoenixChannel: tried to join multiple times. '
-        'Create a new channel instance via socket.channel("$topic").',
-      ));
+      return Future.error(
+        StateError(
+          'PhoenixChannel: tried to join multiple times. '
+          'Create a new channel instance via socket.channel("$topic").',
+        ),
+      );
     }
     _joinCalled = true;
     _joinPayload = Map<String, dynamic>.from(payload);
@@ -89,13 +91,15 @@ class PhoenixChannel {
     _joinRef = ref;
     _joinCompleter = Completer<Map<String, dynamic>>();
 
-    _socket.send(PhoenixMessage(
-      joinRef: ref,
-      ref: ref,
-      topic: topic,
-      event: 'phx_join',
-      payload: _joinPayload ?? const {},
-    ));
+    _socket.send(
+      PhoenixMessage(
+        joinRef: ref,
+        ref: ref,
+        topic: topic,
+        event: 'phx_join',
+        payload: _joinPayload ?? const {},
+      ),
+    );
 
     return _joinCompleter!.future.timeout(
       const Duration(seconds: 10),
@@ -128,13 +132,15 @@ class PhoenixChannel {
     final completer = Completer<Map<String, dynamic>>();
     _pendingRefs[ref] = completer;
 
-    _socket.send(PhoenixMessage(
-      joinRef: _joinRef,
-      ref: ref,
-      topic: topic,
-      event: 'phx_leave',
-      payload: const {},
-    ));
+    _socket.send(
+      PhoenixMessage(
+        joinRef: _joinRef,
+        ref: ref,
+        topic: topic,
+        event: 'phx_leave',
+        payload: const {},
+      ),
+    );
 
     try {
       await completer.future.timeout(const Duration(seconds: 5));
@@ -201,13 +207,15 @@ class PhoenixChannel {
     final completer = Completer<Map<String, dynamic>>();
     _pendingRefs[ref] = completer;
 
-    _socket.send(PhoenixMessage(
-      joinRef: _joinRef,
-      ref: ref,
-      topic: topic,
-      event: event,
-      payload: payload,
-    ));
+    _socket.send(
+      PhoenixMessage(
+        joinRef: _joinRef,
+        ref: ref,
+        topic: topic,
+        event: event,
+        payload: payload,
+      ),
+    );
 
     return completer.future.timeout(
       const Duration(seconds: 10),
@@ -391,29 +399,31 @@ class PhoenixChannel {
     _joinRef = ref;
     _joinCompleter = Completer<Map<String, dynamic>>();
 
-    _socket.send(PhoenixMessage(
-      joinRef: ref,
-      ref: ref,
-      topic: topic,
-      event: 'phx_join',
-      payload: _joinPayload!,
-    ));
+    _socket.send(
+      PhoenixMessage(
+        joinRef: ref,
+        ref: ref,
+        topic: topic,
+        event: 'phx_join',
+        payload: _joinPayload!,
+      ),
+    );
 
     // Bug fix: add timeout matching _sendJoin so rejoin doesn't hang forever.
     unawaited(
       _joinCompleter!.future
           .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          _joinCompleter = null;
-          _state = PhoenixChannelState.errored;
-          // Bug fix: clear push buffer on rejoin timeout.
-          _clearPendingRefs(
-            TimeoutException('Rejoin timed out: $topic'),
-          );
-          throw TimeoutException('Rejoin timed out: $topic');
-        },
-      )
+            const Duration(seconds: 10),
+            onTimeout: () {
+              _joinCompleter = null;
+              _state = PhoenixChannelState.errored;
+              // Bug fix: clear push buffer on rejoin timeout.
+              _clearPendingRefs(
+                TimeoutException('Rejoin timed out: $topic'),
+              );
+              throw TimeoutException('Rejoin timed out: $topic');
+            },
+          )
           .catchError((Object _) => <String, dynamic>{}),
     );
   }
